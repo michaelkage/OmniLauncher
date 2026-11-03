@@ -18,6 +18,12 @@ The current app-level appearance setting is stored separately from a preset so s
 
 The current customization panel can change app-label visibility, grid column count, and the maximum visible app count for supported app components. Applying changes saves a private copy of the active preset on-device; exporting the active preset shares those changes in the existing `.omni` format. Appearance preferences remain app-level settings and are not serialized into the layout.
 
+## Declarative theme packs (schema version 1)
+
+The initial theme-pack codec defines a separate JSON format for colour palettes. A pack contains `schema_version`, `pack_metadata` (`id`, `name`, `author`, `version`), and `palettes.light` / `palettes.dark`. Each palette currently accepts only five six-digit hex colour tokens: `primary`, `secondary`, `tertiary`, `background`, and `surface`.
+
+The codec rejects unknown JSON fields, unsupported schema versions, unsafe IDs, invalid metadata, malformed colours, and input larger than 64 KiB. Packs are data only: no scripts, URLs, arbitrary component definitions, fonts, or images are accepted. The codec and validation tests are implemented; importing, previewing, applying, and removing packs from the app UI are still future work. This format is separate from `.omni` layout archives.
+
 ## Add-on direction
 
 Future add-ons are planned as signed/validated declarative resource packs: appearance palettes, icon metadata, fonts, and additional native component definitions. The current prototype does not load third-party executable code, scripts, or arbitrary WebView extensions. Add-on permissions, provenance, size limits, and compatibility will need explicit review before a catalogue is enabled.
