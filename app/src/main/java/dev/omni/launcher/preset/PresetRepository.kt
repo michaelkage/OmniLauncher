@@ -61,12 +61,18 @@ class PresetRepository(context: Context) {
             issues += PresetValidationIssue("$.layout_hierarchy.components", "A preset may contain at most $MAX_COMPONENTS root components.")
         }
 
+        var totalComponents = 0
         fun validateComponents(components: List<LayoutComponent>, path: String, depth: Int) {
             if (depth > MAX_DEPTH) {
                 issues += PresetValidationIssue(path, "Component nesting exceeds the maximum depth of $MAX_DEPTH.")
                 return
             }
             components.forEachIndexed { index, component ->
+                totalComponents += 1
+                if (totalComponents > MAX_TOTAL_COMPONENTS) {
+                    issues += PresetValidationIssue(path, "A preset may contain at most $MAX_TOTAL_COMPONENTS components in total.")
+                    return
+                }
                 val componentPath = "$path[$index]"
                 if (component.type !in SUPPORTED_COMPONENTS) {
                     issues += PresetValidationIssue("$componentPath.type", "Unknown component type '${component.type}'.")
@@ -94,6 +100,7 @@ class PresetRepository(context: Context) {
     companion object {
         const val SUPPORTED_SCHEMA_VERSION = 1
         const val MAX_COMPONENTS = 100
+        const val MAX_TOTAL_COMPONENTS = 500
         const val MAX_DEPTH = 12
         val SUPPORTED_COMPONENTS = setOf(
             "clock_widget", "app_list_container", "list", "grid", "dock", "stack"
