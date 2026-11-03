@@ -137,6 +137,8 @@ private fun OmniHome(
     val preferences = remember { context.getSharedPreferences("omni_launcher", Context.MODE_PRIVATE) }
     var preset by remember { mutableStateOf<PresetDocument?>(null) }
     var selectedPresetId by remember { mutableStateOf(preferences.getString("active_preset", "minimal-wave") ?: "minimal-wave") }
+    var savedPresetIds by remember { mutableStateOf<List<String>>(emptyList()) }
+    var presetLoadGeneration by remember { mutableStateOf(0) }
     var apps by remember { mutableStateOf<List<LaunchableApp>>(emptyList()) }
     var error by remember { mutableStateOf<String?>(null) }
     var presetMenuOpen by remember { mutableStateOf(false) }
@@ -173,18 +175,33 @@ private fun OmniHome(
         }
     }
 
+    fun refreshSavedPresetIds() {
+        scope.launch {
+            savedPresetIds = withContext(Dispatchers.IO) { repository.savedPresetIds() }
+        }
+    }
+
     fun selectPreset(selectionId: String) {
         val isSavedPreset = selectionId.startsWith("saved:")
         val presetId = if (isSavedPreset) selectionId.removePrefix("saved:") else selectionId
-        runCatching {
-            if (isSavedPreset) repository.loadSavedPreset(presetId)
-            else repository.loadBundledPreset(presetId)
-        }.onSuccess {
-            preset = it
-            selectedPresetId = if (isSavedPreset) "saved:$presetId" else presetId
-            preferences.edit().putString("active_preset", selectedPresetId).apply()
-            error = null
-        }.onFailure { error = it.message ?: "Preset could not be loaded" }
+        val requestGeneration = presetLoadGeneration + 1
+        presetLoadGeneration = requestGeneration
+        scope.launch {
+            val result = runCatching {
+                withContext(Dispatchers.IO) {
+                    if (isSavedPreset) repository.loadSavedPreset(presetId)
+                    else repository.loadBundledPreset(presetId)
+                }
+            }
+            if (presetLoadGeneration == requestGeneration) {
+                result.onSuccess {
+                    preset = it
+                    selectedPresetId = if (isSavedPreset) "saved:$presetId" else presetId
+                    preferences.edit().putString("active_preset", selectedPresetId).apply()
+                    error = null
+                }.onFailure { error = it.message ?: "Preset could not be loaded" }
+            }
+        }
     }
 
     val importLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri: Uri? ->
@@ -201,6 +218,7 @@ private fun OmniHome(
                     preset = imported
                     selectedPresetId = "saved:${imported.metadata.id}"
                     preferences.edit().putString("active_preset", selectedPresetId).apply()
+                    savedPresetIds = withContext(Dispatchers.IO) { repository.savedPresetIds() }
                     error = null
                 }.onFailure { error = "Import failed: ${it.message ?: "invalid archive"}" }
             }
@@ -265,10 +283,11 @@ private fun OmniHome(
 
     LaunchedEffect(Unit) {
         val savedSelection = selectedPresetId.removePrefix("saved:")
+        savedPresetIds = withContext(Dispatchers.IO) { repository.savedPresetIds() }
         val migrationDone = preferences.getBoolean("preset_selection_namespace_v1_migrated", false)
         val isLegacySavedSelection = !migrationDone &&
             !selectedPresetId.startsWith("saved:") &&
-            selectedPresetId in repository.savedPresetIds()
+            selectedPresetId in savedPresetIds
         preferences.edit().putBoolean("preset_selection_namespace_v1_migrated", true).apply()
         selectPreset(
             if (selectedPresetId.startsWith("saved:") || isLegacySavedSelection) "saved:$savedSelection"
@@ -316,7 +335,7 @@ private fun OmniHome(
                             onClick = { presetMenuOpen = false; selectPreset(choice.id) }
                         )
                     }
-                    repository.savedPresetIds().forEach { id ->
+                    savedPresetIds.forEach { id ->
                         DropdownMenuItem(
                             text = { Text("Saved: $id") },
                             onClick = { presetMenuOpen = false; selectPreset("saved:$id") }
@@ -711,6 +730,7 @@ private fun OmniHome(
                                 preset = updated
                                 selectedPresetId = "saved:${updated.metadata.id}"
                                 preferences.edit().putString("active_preset", selectedPresetId).apply()
+                                refreshSavedPresetIds()
                                 error = "Saved visual layout."
                                 layoutEditorOpen = false
                             }.onFailure { error = "Could not save layout: ${it.message}" }
@@ -782,6 +802,7 @@ private fun OmniHome(
                                 preset = updated
                                 selectedPresetId = "saved:${updated.metadata.id}"
                                 preferences.edit().putString("active_preset", selectedPresetId).apply()
+                                refreshSavedPresetIds()
                                 error = "Saved launcher customizations."
                                 customizeDialogOpen = false
                             }.onFailure { error = "Could not save customizations: ${it.message}" }
