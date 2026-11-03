@@ -24,6 +24,26 @@ class LayoutEditorOperationsTest {
         assertEquals(listOf(grid, dock, clock), moveComponent(listOf(clock, grid, dock), 0, 2))
     }
 
+    @Test fun dragTargetRoundsToNearestRow() {
+        assertEquals(2, dragTargetIndex(1, 43f, 42f, 5))
+        assertEquals(0, dragTargetIndex(1, -21f, 42f, 5))
+    }
+
+    @Test fun dragTargetClampsToListBounds() {
+        assertEquals(0, dragTargetIndex(0, -500f, 42f, 4))
+        assertEquals(3, dragTargetIndex(2, 500f, 42f, 4))
+    }
+
+    @Test fun dragTargetRejectsInvalidRowHeightAndStartIndex() {
+        assertThrows(IllegalArgumentException::class.java) {
+            dragTargetIndex(0, 10f, 0f, 3)
+        }
+        assertThrows(IllegalArgumentException::class.java) {
+            dragTargetIndex(3, 10f, 42f, 3)
+        }
+        assertEquals(-1, dragTargetIndex(0, 10f, 42f, 0))
+    }
+
     @Test fun ignoresOutOfRangeMove() {
         assertEquals(listOf(clock, grid), moveComponent(listOf(clock, grid), 0, -1))
     }
