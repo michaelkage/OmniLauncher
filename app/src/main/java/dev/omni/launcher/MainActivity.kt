@@ -47,6 +47,9 @@ import dev.omni.launcher.apps.LaunchableApp
 import dev.omni.launcher.preset.ComponentRegistry
 import dev.omni.launcher.preset.PresetDocument
 import dev.omni.launcher.preset.PresetRepository
+import dev.omni.launcher.theme.ThemePack
+import dev.omni.launcher.theme.ThemePackMetadata
+import dev.omni.launcher.theme.ThemePackRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -58,11 +61,31 @@ class MainActivity : ComponentActivity() {
         setContent {
             var themeMode by remember { mutableStateOf(appearance.getString("theme_mode", "system") ?: "system") }
             var palette by remember { mutableStateOf(appearance.getString("theme_palette", "dynamic") ?: "dynamic") }
-            OmniTheme(mode = themeMode, palette = palette) {
+            var customThemePack by remember { mutableStateOf<ThemePack?>(null) }
+            LaunchedEffect(Unit) {
+                val savedId = appearance.getString("custom_theme_pack_id", null)
+                if (savedId != null) {
+                    customThemePack = runCatching { ThemePackRepository(this@MainActivity).load(savedId) }.getOrNull()
+                    if (customThemePack == null && palette == "custom") palette = "dynamic"
+                }
+            }
+            OmniTheme(mode = themeMode, palette = palette, customPack = customThemePack) {
                 Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
                     OmniHome(
                         themeMode = themeMode,
                         palette = palette,
+                        customThemePack = customThemePack,
+                        onCustomThemePackChange = { pack ->
+                            customThemePack = pack
+                            appearance.edit().putString("custom_theme_pack_id", pack?.metadata?.id).apply()
+                            if (pack != null) {
+                                palette = "custom"
+                                appearance.edit().putString("theme_palette", "custom").apply()
+                            } else if (palette == "custom") {
+                                palette = "dynamic"
+                                appearance.edit().putString("theme_palette", "dynamic").apply()
+                            }
+                        },
                         onThemeModeChange = {
                             themeMode = it
                             appearance.edit().putString("theme_mode", it).apply()
@@ -82,12 +105,15 @@ class MainActivity : ComponentActivity() {
 private fun OmniHome(
     themeMode: String,
     palette: String,
+    customThemePack: ThemePack?,
+    onCustomThemePackChange: (ThemePack?) -> Unit,
     onThemeModeChange: (String) -> Unit,
     onPaletteChange: (String) -> Unit
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val repository = remember { PresetRepository(context) }
+    val themePackRepository = remember { ThemePackRepository(context) }
     val preferences = remember { context.getSharedPreferences("omni_launcher", Context.MODE_PRIVATE) }
     var preset by remember { mutableStateOf<PresetDocument?>(null) }
     var selectedPresetId by remember { mutableStateOf(preferences.getString("active_preset", "minimal-wave") ?: "minimal-wave") }
@@ -96,6 +122,9 @@ private fun OmniHome(
     var presetMenuOpen by remember { mutableStateOf(false) }
     var accessDialogOpen by remember { mutableStateOf(false) }
     var appearanceDialogOpen by remember { mutableStateOf(false) }
+    var themeManagerOpen by remember { mutableStateOf(false) }
+    var installedThemePacks by remember { mutableStateOf<List<ThemePackMetadata>>(emptyList()) }
+    var themePackBusy by remember { mutableStateOf(false) }
     var customizeDialogOpen by remember { mutableStateOf(false) }
     var customizeLabels by remember { mutableStateOf(true) }
     var customizeColumns by remember { mutableStateOf(4f) }
@@ -142,6 +171,27 @@ private fun OmniHome(
         }
     }
 
+    val themePackImportLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri: Uri? ->
+        if (uri != null) {
+            scope.launch {
+                themePackBusy = true
+                val result = runCatching {
+                    withContext(Dispatchers.IO) {
+                        val input = context.contentResolver.openInputStream(uri)
+                            ?: throw IllegalStateException("Could not open the selected theme pack.")
+                        input.use { themePackRepository.import(it) }
+                    }
+                }
+                result.onSuccess { pack ->
+                    installedThemePacks = withContext(Dispatchers.IO) { themePackRepository.list() }
+                    onCustomThemePackChange(pack)
+                    error = "Imported theme: ${pack.metadata.name}."
+                }.onFailure { error = "Theme import failed: ${it.message ?: "invalid theme pack"}" }
+                themePackBusy = false
+            }
+        }
+    }
+
     val exportLauncher = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/zip")) { uri: Uri? ->
         val document = exportDocument
         exportDocument = null
@@ -163,6 +213,7 @@ private fun OmniHome(
     LaunchedEffect(Unit) {
         selectPreset(selectedPresetId)
         refreshApps()
+        installedThemePacks = withContext(Dispatchers.IO) { runCatching { themePackRepository.list() }.getOrDefault(emptyList()) }
     }
 
     DisposableEffect(context) {
@@ -221,6 +272,12 @@ private fun OmniHome(
                     }
                 ) { Text("Export") }
                 TextButton(onClick = { appearanceDialogOpen = true }) { Text("Style") }
+                TextButton(onClick = {
+                    scope.launch {
+                        installedThemePacks = withContext(Dispatchers.IO) { runCatching { themePackRepository.list() }.getOrDefault(emptyList()) }
+                        themeManagerOpen = true
+                    }
+                }) { Text("Themes") }
                 TextButton(onClick = {
                     val current = preset
                     if (current != null) {
@@ -328,6 +385,58 @@ private fun OmniHome(
         )
     }
 
+    if (themeManagerOpen) {
+        AlertDialog(
+            onDismissRequest = { if (!themePackBusy) themeManagerOpen = false },
+            title = { Text("Theme manager") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Text("Import a JSON theme pack, then tap an installed theme to apply it.")
+                    TextButton(
+                        enabled = !themePackBusy,
+                        onClick = { themePackImportLauncher.launch(arrayOf("application/json", "text/plain")) }
+                    ) { Text(if (themePackBusy) "Importing…" else "Import theme pack") }
+                    if (installedThemePacks.isEmpty()) {
+                        Text("No imported themes yet.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    } else {
+                        LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            itemsIndexed(installedThemePacks, key = { _, item -> item.id }) { _, metadata ->
+                                val isActive = customThemePack?.metadata?.id == metadata.id && palette == "custom"
+                                Column(
+                                    modifier = Modifier.fillMaxWidth().clickable {
+                                        scope.launch {
+                                            val result = runCatching {
+                                                withContext(Dispatchers.IO) { themePackRepository.load(metadata.id) }
+                                            }
+                                            result.onSuccess {
+                                                onCustomThemePackChange(it)
+                                                error = "Applied theme: ${it.metadata.name}."
+                                            }.onFailure { error = "Could not load theme: ${it.message}" }
+                                        }
+                                    }.padding(vertical = 6.dp),
+                                    verticalArrangement = Arrangement.spacedBy(2.dp)
+                                ) {
+                                    Text(metadata.name, style = MaterialTheme.typography.titleSmall)
+                                    Text("by ${metadata.author} · v${metadata.version}", style = MaterialTheme.typography.bodySmall)
+                                    Text(if (isActive) "Currently applied · tap to apply" else "Tap to apply", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
+                                    TextButton(onClick = {
+                                        scope.launch {
+                                            val removed = withContext(Dispatchers.IO) { themePackRepository.remove(metadata.id) }
+                                            installedThemePacks = withContext(Dispatchers.IO) { themePackRepository.list() }
+                                            if (removed && customThemePack?.metadata?.id == metadata.id) onCustomThemePackChange(null)
+                                            error = if (removed) "Removed theme ${metadata.name}." else "Theme was not found."
+                                        }
+                                    }) { Text("Remove") }
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = { TextButton(onClick = { themeManagerOpen = false }) { Text("Done") }
+        )
+    }
+
     if (appearanceDialogOpen) {
         AlertDialog(
             onDismissRequest = { appearanceDialogOpen = false },
@@ -349,8 +458,9 @@ private fun OmniHome(
                         "dynamic" to "Material You (wallpaper)",
                         "ocean" to "Ocean",
                         "forest" to "Forest",
-                        "plum" to "Plum"
-                    ).forEach { (value, label) ->
+                        "plum" to "Plum",
+                        "custom" to "Imported theme"
+                    ).filter { it.first != "custom" || customThemePack != null }.forEach { (value, label) ->
                         Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
                             androidx.compose.material3.RadioButton(
                                 selected = palette == value,
@@ -360,7 +470,7 @@ private fun OmniHome(
                         }
                     }
                     Text(
-                        "Material You wallpaper colours are available on Android 12 and newer. Other palettes work as fallbacks.",
+                        if (palette == "custom" && customThemePack != null) "Using imported theme: ${customThemePack.metadata.name}." else "Material You wallpaper colours are available on Android 12 and newer. Other palettes work as fallbacks.",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
