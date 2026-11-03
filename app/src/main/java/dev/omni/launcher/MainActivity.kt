@@ -51,7 +51,6 @@ import dev.omni.launcher.preset.ComponentRegistry
 import dev.omni.launcher.preset.PresetDocument
 import dev.omni.launcher.preset.PresetRepository
 import dev.omni.launcher.theme.ThemePack
-import dev.omni.launcher.theme.ThemePackMetadata
 import dev.omni.launcher.theme.ThemePackRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -277,7 +276,7 @@ private fun OmniHome(
                 TextButton(onClick = { appearanceDialogOpen = true }) { Text("Style") }
                 TextButton(onClick = {
                     scope.launch {
-                        installedThemePacks = withContext(Dispatchers.IO) { runCatching { themePackRepository.list() }.getOrDefault(emptyList()) }
+                        installedThemePacks = withContext(Dispatchers.IO) { runCatching { themePackRepository.list().map { themePackRepository.load(it.id) } }.getOrDefault(emptyList()) }
                         themeManagerOpen = true
                     }
                 }) { Text("Themes") }
@@ -437,7 +436,7 @@ private fun OmniHome(
                                     TextButton(onClick = {
                                         scope.launch {
                                             val removed = withContext(Dispatchers.IO) { themePackRepository.remove(metadata.id) }
-                                            installedThemePacks = withContext(Dispatchers.IO) { themePackRepository.list() }
+                                            installedThemePacks = withContext(Dispatchers.IO) { themePackRepository.list().map { themePackRepository.load(it.id) } }
                                             if (removed && customThemePack?.metadata?.id == metadata.id) onCustomThemePackChange(null)
                                             error = if (removed) "Removed theme ${metadata.name}." else "Theme was not found."
                                         }
