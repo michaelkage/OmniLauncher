@@ -4,9 +4,12 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.net.Uri
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -41,7 +44,9 @@ import dev.omni.launcher.apps.LaunchableApp
 import dev.omni.launcher.preset.ComponentRegistry
 import dev.omni.launcher.preset.PresetDocument
 import dev.omni.launcher.preset.PresetRepository
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -61,14 +66,16 @@ private fun OmniHome() {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val repository = remember { PresetRepository(context) }
+    val preferences = remember { context.getSharedPreferences("omni_launcher", Context.MODE_PRIVATE) }
     var preset by remember { mutableStateOf<PresetDocument?>(null) }
-    var selectedPresetId by remember { mutableStateOf("minimal-wave") }
+    var selectedPresetId by remember { mutableStateOf(preferences.getString("active_preset", "minimal-wave") ?: "minimal-wave") }
     var apps by remember { mutableStateOf<List<LaunchableApp>>(emptyList()) }
     var error by remember { mutableStateOf<String?>(null) }
     var presetMenuOpen by remember { mutableStateOf(false) }
     var accessDialogOpen by remember { mutableStateOf(false) }
     var accessStatus by remember { mutableStateOf<AccessCapabilities?>(null) }
     var accessChecking by remember { mutableStateOf(false) }
+    var exportDocument by remember { mutableStateOf<PresetDocument?>(null) }
 
     fun refreshApps() {
         runCatching { AppCatalogue(context).load() }
@@ -77,13 +84,53 @@ private fun OmniHome() {
     }
 
     fun selectPreset(id: String) {
-        runCatching { repository.loadBundledPreset(id) }
-            .onSuccess {
-                preset = it
-                selectedPresetId = id
-                error = null
+        runCatching {
+            if (id in repository.savedPresetIds()) repository.loadSavedPreset(id)
+            else repository.loadBundledPreset(id)
+        }.onSuccess {
+            preset = it
+            selectedPresetId = id
+            preferences.edit().putString("active_preset", id).apply()
+            error = null
+        }.onFailure { error = it.message ?: "Preset could not be loaded" }
+    }
+
+    val importLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri: Uri? ->
+        if (uri != null) {
+            scope.launch {
+                val result = runCatching {
+                    withContext(Dispatchers.IO) {
+                        val input = context.contentResolver.openInputStream(uri)
+                            ?: error("Could not open the selected archive.")
+                        repository.importOmni(input)
+                    }
+                }
+                result.onSuccess { imported ->
+                    preset = imported
+                    selectedPresetId = imported.metadata.id
+                    preferences.edit().putString("active_preset", selectedPresetId).apply()
+                    error = null
+                }.onFailure { error = "Import failed: ${it.message ?: "invalid archive"}" }
             }
-            .onFailure { error = it.message ?: "Preset could not be loaded" }
+        }
+    }
+
+    val exportLauncher = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/zip")) { uri: Uri? ->
+        val document = exportDocument
+        exportDocument = null
+        if (uri != null && document != null) {
+            scope.launch {
+                val result = runCatching {
+                    withContext(Dispatchers.IO) {
+                        val output = context.contentResolver.openOutputStream(uri)
+                            ?: error("Could not create the destination file.")
+                        repository.exportOmni(document, output)
+                    }
+                }
+                result.onFailure { error = "Export failed: ${it.message ?: "could not write archive"}" }
+                result.onSuccess { error = "Exported ${document.metadata.name}." }
+            }
+        }
     }
 
     LaunchedEffect(Unit) {
@@ -104,12 +151,7 @@ private fun OmniHome() {
                 refreshApps()
             }
         }
-        ContextCompat.registerReceiver(
-            context,
-            receiver,
-            packageFilter,
-            ContextCompat.RECEIVER_NOT_EXPORTED
-        )
+        ContextCompat.registerReceiver(context, receiver, packageFilter, ContextCompat.RECEIVER_NOT_EXPORTED)
         onDispose { runCatching { context.unregisterReceiver(receiver) } }
     }
 
@@ -131,19 +173,33 @@ private fun OmniHome() {
                     repository.bundledPresets.forEach { choice ->
                         DropdownMenuItem(
                             text = { Text(choice.title) },
-                            onClick = {
-                                presetMenuOpen = false
-                                selectPreset(choice.id)
-                            }
+                            onClick = { presetMenuOpen = false; selectPreset(choice.id) }
+                        )
+                    }
+                    repository.savedPresetIds().forEach { id ->
+                        DropdownMenuItem(
+                            text = { Text("Imported: $id") },
+                            onClick = { presetMenuOpen = false; selectPreset(id) }
                         )
                     }
                 }
+                TextButton(onClick = { importLauncher.launch(arrayOf("application/zip", "application/octet-stream")) }) {
+                    Text("Import")
+                }
+                TextButton(
+                    enabled = preset != null,
+                    onClick = {
+                        exportDocument = preset
+                        exportLauncher.launch("${preset?.metadata?.id ?: "omni"}.omni")
+                    }
+                ) { Text("Export") }
                 TextButton(onClick = { accessDialogOpen = true }) { Text("Access") }
             }
         }
 
         if (error != null) {
-            Text(error!!, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+            Text(error!!, color = if (error!!.startsWith("Exported")) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error,
+                style = MaterialTheme.typography.bodySmall)
         }
 
         val document = preset
@@ -202,9 +258,7 @@ private fun OmniHome() {
                     ) { Text("Request root check") }
                 }
             },
-            confirmButton = {
-                TextButton(onClick = { accessDialogOpen = false }) { Text("Close") }
-            }
+            confirmButton = { TextButton(onClick = { accessDialogOpen = false }) { Text("Close") } }
         )
     }
 }
