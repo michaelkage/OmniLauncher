@@ -20,6 +20,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Card
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -86,28 +87,44 @@ private fun ClockRenderer(component: LayoutComponent) {
 
 @Composable
 private fun ListRenderer(component: LayoutComponent, apps: List<LaunchableApp>) {
-    val visible = filteredApps(component, apps)
-    LazyColumn(
-        modifier = Modifier.fillMaxWidth().heightIn(max = 560.dp),
-        verticalArrangement = Arrangement.spacedBy(component.spacing.dp)
-    ) {
-        items(visible, key = { it.packageName + "/" + it.activityName }) { app ->
-            AppRow(app, component.showLabels)
+    var query by remember { mutableStateOf("") }
+    val visible = filteredApps(component, apps, query)
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        AppSearchField(query = query, onQueryChange = { query = it })
+        if (visible.isEmpty()) {
+            Text("No apps found", color = MaterialTheme.colorScheme.onSurfaceVariant)
+        } else {
+            LazyColumn(
+                modifier = Modifier.fillMaxWidth().heightIn(max = 560.dp),
+                verticalArrangement = Arrangement.spacedBy(component.spacing.dp)
+            ) {
+                items(visible, key = { it.packageName + "/" + it.activityName }) { app ->
+                    AppRow(app, component.showLabels)
+                }
+            }
         }
     }
 }
 
 @Composable
 private fun GridRenderer(component: LayoutComponent, apps: List<LaunchableApp>) {
-    val visible = filteredApps(component, apps)
-    LazyVerticalGrid(
-        columns = GridCells.Fixed(component.columns.coerceIn(1, 8)),
-        modifier = Modifier.fillMaxWidth().heightIn(max = 560.dp),
-        verticalArrangement = Arrangement.spacedBy(component.spacing.dp),
-        horizontalArrangement = Arrangement.spacedBy(component.spacing.dp)
-    ) {
-        gridItems(visible, key = { it.packageName + "/" + it.activityName }) { app ->
-            AppTile(app, component.showLabels)
+    var query by remember { mutableStateOf("") }
+    val visible = filteredApps(component, apps, query)
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        AppSearchField(query = query, onQueryChange = { query = it })
+        if (visible.isEmpty()) {
+            Text("No apps found", color = MaterialTheme.colorScheme.onSurfaceVariant)
+        } else {
+            LazyVerticalGrid(
+                columns = GridCells.Fixed(component.columns.coerceIn(1, 8)),
+                modifier = Modifier.fillMaxWidth().heightIn(max = 560.dp),
+                verticalArrangement = Arrangement.spacedBy(component.spacing.dp),
+                horizontalArrangement = Arrangement.spacedBy(component.spacing.dp)
+            ) {
+                gridItems(visible, key = { it.packageName + "/" + it.activityName }) { app ->
+                    AppTile(app, component.showLabels)
+                }
+            }
         }
     }
 }
@@ -187,8 +204,31 @@ private fun AppTile(app: LaunchableApp, showLabel: Boolean) {
     }
 }
 
-private fun filteredApps(component: LayoutComponent, apps: List<LaunchableApp>): List<LaunchableApp> {
+@Composable
+private fun AppSearchField(query: String, onQueryChange: (String) -> Unit) {
+    OutlinedTextField(
+        value = query,
+        onValueChange = onQueryChange,
+        modifier = Modifier.fillMaxWidth(),
+        singleLine = true,
+        label = { Text("Search apps") }
+    )
+}
+
+internal fun matchesAppSearch(label: String, packageName: String, query: String): Boolean {
+    val normalized = query.trim()
+    return normalized.isEmpty() ||
+        label.contains(normalized, ignoreCase = true) ||
+        packageName.contains(normalized, ignoreCase = true)
+}
+
+private fun filteredApps(
+    component: LayoutComponent,
+    apps: List<LaunchableApp>,
+    query: String = ""
+): List<LaunchableApp> {
     val excluded = component.filter?.excludePackages.orEmpty().toSet()
     val filtered = apps.filterNot { it.packageName in excluded }
+        .filter { matchesAppSearch(it.label, it.packageName, query) }
     return component.maxVisibleItems?.let { filtered.take(it.coerceIn(1, 500)) } ?: filtered
 }
