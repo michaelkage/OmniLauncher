@@ -16,7 +16,7 @@ The current app-level appearance setting is stored separately from a preset so s
 
 ## In-app layout customization
 
-The visual layout editor can add, remove, and reorder top-level components. For app grids, lists, app-list containers, and docks it can toggle labels and set visible-app limits; grids also expose column count, and all components expose spacing. Changes are validated against the same preset validator and saved as a private copy on-device. Nested stack editing and drag-and-drop are not yet implemented; the current editor operates on the root component list. Appearance preferences remain app-level settings and are not serialized into the layout.
+The visual layout editor can add, remove, and reorder top-level components. These list operations are implemented as immutable helpers and covered by unit tests. For app grids, lists, app-list containers, and docks it can toggle labels and set visible-app limits; grids also expose column count, and all components expose spacing. Changes are validated against the same preset validator and saved as a private copy on-device. Nested stack editing and drag-and-drop are not yet implemented; the current editor operates on the root component list. Appearance preferences remain app-level settings and are not serialized into the layout.
 
 ## Declarative theme packs (schema version 1)
 
