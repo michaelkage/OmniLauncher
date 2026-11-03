@@ -33,6 +33,7 @@ Neither elevated backend is required to launch apps, render presets, switch layo
 - Live bundled-preset switching
 - Persistent active-preset selection and private storage for imported presets
 - Bounded .omni archive import/export through Android's document picker
+- Unit tests for archive round-trips and rejection of malformed or unsafe archive inputs
 - Optional privilege capability layer
 
 ## Getting started
