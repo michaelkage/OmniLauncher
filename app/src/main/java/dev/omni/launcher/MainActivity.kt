@@ -51,6 +51,9 @@ import dev.omni.launcher.apps.LaunchableApp
 import dev.omni.launcher.preset.ComponentRegistry
 import dev.omni.launcher.preset.PresetDocument
 import dev.omni.launcher.preset.PresetRepository
+import dev.omni.launcher.preset.appendComponent
+import dev.omni.launcher.preset.moveComponent
+import dev.omni.launcher.preset.removeComponent
 import dev.omni.launcher.theme.ThemePack
 import dev.omni.launcher.theme.ThemePackRepository
 import kotlinx.coroutines.Dispatchers
@@ -380,7 +383,7 @@ private fun OmniHome(
                                             "dock" -> dev.omni.launcher.preset.LayoutComponent(type = type, maxVisibleItems = 5)
                                             else -> dev.omni.launcher.preset.LayoutComponent(type = type)
                                         }
-                                        editorComponents = editorComponents + component
+                                        editorComponents = appendComponent(editorComponents, component)
                                         addComponentMenuOpen = false
                                     }
                                 )
@@ -459,24 +462,18 @@ private fun OmniHome(
                                         TextButton(
                                             enabled = index > 0,
                                             onClick = {
-                                                editorComponents = editorComponents.toMutableList().also {
-                                                    val item = it.removeAt(index)
-                                                    it.add(index - 1, item)
-                                                }
+                                                editorComponents = moveComponent(editorComponents, index, -1)
                                             }
                                         ) { Text("Move up") }
                                         TextButton(
                                             enabled = index < editorComponents.lastIndex,
                                             onClick = {
-                                                editorComponents = editorComponents.toMutableList().also {
-                                                    val item = it.removeAt(index)
-                                                    it.add(index + 1, item)
-                                                }
+                                                editorComponents = moveComponent(editorComponents, index, 1)
                                             }
                                         ) { Text("Move down") }
                                         TextButton(
                                             onClick = {
-                                                editorComponents = editorComponents.toMutableList().also { it.removeAt(index) }
+                                                editorComponents = removeComponent(editorComponents, index)
                                             }
                                         ) { Text("Remove") }
                                     }
