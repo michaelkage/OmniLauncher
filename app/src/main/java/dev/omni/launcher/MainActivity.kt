@@ -54,6 +54,7 @@ import dev.omni.launcher.access.AccessCapabilityProbe
 import dev.omni.launcher.apps.AppCatalogue
 import dev.omni.launcher.apps.LaunchableApp
 import dev.omni.launcher.preset.ComponentRegistry
+import dev.omni.launcher.preset.calculateDragTargetIndexFromCenters
 import dev.omni.launcher.preset.PresetDocument
 import dev.omni.launcher.preset.PresetRepository
 import dev.omni.launcher.preset.appendComponent
@@ -507,6 +508,7 @@ private fun OmniHome(
                                         if (component.type == "stack") {
                                             TextButton(onClick = {
                                                 editorStackPath = editorStackPath + index
+                                                editorRowCenters = emptyMap()
                                             }) { Text("Open stack") }
                                         }
                                     }
