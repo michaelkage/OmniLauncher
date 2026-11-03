@@ -22,7 +22,7 @@ The current customization panel can change app-label visibility, grid column cou
 
 The initial theme-pack codec defines a separate JSON format for colour palettes. A pack contains `schema_version`, `pack_metadata` (`id`, `name`, `author`, `version`), and `palettes.light` / `palettes.dark`. Each palette currently accepts only five six-digit hex colour tokens: `primary`, `secondary`, `tertiary`, `background`, and `surface`.
 
-The codec rejects unknown JSON fields, unsupported schema versions, unsafe IDs, invalid metadata, malformed colours, and input larger than 64 KiB. Packs are data only: no scripts, URLs, arbitrary component definitions, fonts, or images are accepted. The codec and validation tests are implemented; importing, previewing, applying, and removing packs from the app UI are still future work. This format is separate from `.omni` layout archives.
+The codec rejects unknown JSON fields, unsupported schema versions, unsafe IDs, invalid metadata, malformed colours, and input larger than 64 KiB. Packs are data only: no scripts, URLs, arbitrary component definitions, fonts, or images are accepted. The codec, validation tests, and private app-storage repository are implemented. The repository supports bounded import, validation, save, list, load, and remove operations. Previewing and applying packs, plus the management UI, are still future work. This format is separate from `.omni` layout archives.
 
 ## Add-on direction
 
