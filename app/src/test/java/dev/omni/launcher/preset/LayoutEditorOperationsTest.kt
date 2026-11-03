@@ -29,6 +29,18 @@ class LayoutEditorOperationsTest {
         assertEquals(0, calculateDragTargetIndex(1, -22f, 42f, 5))
     }
 
+    @Test fun dragTargetUsesMeasuredRowCenters() {
+        val centers = mapOf(0 to 30f, 1 to 115f, 2 to 260f)
+        assertEquals(1, calculateDragTargetIndexFromCenters(130f, centers, 3))
+        assertEquals(2, calculateDragTargetIndexFromCenters(240f, centers, 3))
+    }
+
+    @Test fun measuredDragTargetIgnoresInvalidRowsAndHandlesEmptyLists() {
+        assertEquals(0, calculateDragTargetIndexFromCenters(40f, mapOf(-1 to 40f, 0 to 80f), 2))
+        assertEquals(-1, calculateDragTargetIndexFromCenters(40f, emptyMap(), 2))
+        assertEquals(-1, calculateDragTargetIndexFromCenters(40f, mapOf(0 to 40f), 0))
+    }
+
     @Test fun dragTargetClampsToListBounds() {
         assertEquals(0, calculateDragTargetIndex(0, -500f, 42f, 4))
         assertEquals(3, calculateDragTargetIndex(2, 500f, 42f, 4))
