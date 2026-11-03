@@ -1,6 +1,7 @@
 package dev.omni.launcher
 
 import android.os.Build
+import dev.omni.launcher.theme.ThemePack
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
@@ -15,6 +16,7 @@ import androidx.compose.ui.platform.LocalContext
 fun OmniTheme(
     mode: String,
     palette: String,
+    customPack: ThemePack? = null,
     content: @Composable () -> Unit
 ) {
     val context = LocalContext.current
@@ -24,7 +26,18 @@ fun OmniTheme(
         else -> isSystemInDarkTheme()
     }
 
-    val colors = if (palette == "dynamic" && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+    fun token(value: String): Color = Color(android.graphics.Color.parseColor(value))
+
+    val colors = if (palette == "custom" && customPack != null) {
+        val selected = if (dark) customPack.palettes.dark else customPack.palettes.light
+        (if (dark) darkColorScheme else lightColorScheme)(
+            primary = token(selected.primary),
+            secondary = token(selected.secondary),
+            tertiary = token(selected.tertiary),
+            background = token(selected.background),
+            surface = token(selected.surface)
+        )
+    } else if (palette == "dynamic" && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
         if (dark) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
     } else {
         when (palette) {
