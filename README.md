@@ -1,48 +1,60 @@
 # Omni Launcher
 
-A modular, declarative Android launcher engine.
+**A modular, declarative Android launcher engine.**
 
-Omni separates the launcher runtime from the interface it renders. The native Android app reads a versioned preset document and renders supported components with Jetpack Compose. Presets are designed to be portable, inspectable, and editable in visual and code editors.
-
-> Status: early prototype. This bootstrap establishes the Android home-screen entry point, a small JSON schema, and native rendering. Shizuku integration, visual editing, preset discovery, and .omni packaging are planned, not yet implemented.
+Omni separates its native runtime from the interface it renders. Versioned JSON presets describe the launcher surface; a Kotlin/Jetpack Compose component registry renders supported components.
 
 ## Principles
 
-- Native Kotlin and Jetpack Compose rendering.
-- Data-driven layouts described by layout.json.
-- Visual and code editors will share one document model.
+- Native Kotlin + Jetpack Compose rendering.
+- Declarative, versioned preset documents.
+- One schema shared by visual and code editors.
 - Presets are data and assets, never arbitrary executable scripts.
-- Shizuku is optional and only used for capabilities the connected service actually provides.
-- Request only the package visibility and system access needed for launcher functionality.
+- Standard Android operation works without Shizuku or root.
+- Shizuku and root (Magisk/SU) are optional, independent capability providers.
+- Explicit capability checks and user consent before privileged operations.
+
+## Optional access backends
+
+| Mode | Requirement | Intended role |
+| --- | --- | --- |
+| Standard | None | Normal launcher features and public Android APIs |
+| Shizuku | Shizuku service + user authorization | Supported privileged operations through a Shizuku user service |
+| Root | Root manager such as Magisk + explicit grant | Optional operations that genuinely require root |
+
+Neither elevated backend is required to launch apps, render presets, switch layouts, or use the launcher. Root is never invoked silently. The current prototype includes a user-triggered SU identity probe and Shizuku installation detection; privileged operation adapters are still being developed.
 
 ## Architecture
 
-- Home activity and Android HOME entry point
-- Preset repository and schema validation
-- JSON layout tree to Compose renderer
-- Launchable-app catalogue
-- Optional Shizuku integration (future)
+- HOME activity and native Compose renderer
+- Typed preset model, validator, and bundled preset repository
+- Component registry: clock, grid, list, dock, and stack
+- Reactive app catalogue refreshed on package add/remove/change broadcasts
+- Live bundled-preset switching
+- Optional privilege capability layer
 
 ## Getting started
 
-Open this project in Android Studio with JDK 17 and a compatible Android SDK. Sync Gradle and run the app configuration on an Android device or emulator. Select Omni as the default Home app in Android settings to test it as your launcher.
+Open in Android Studio with JDK 17 and Android SDK 36. Sync Gradle and run the `app` configuration on a device or emulator. Select **Omni Launcher** as the default Home app in Android settings.
 
-The starter preset is in app/src/main/assets/presets/minimal-wave.json. See docs/PRESET_FORMAT.md for the initial format.
+## Presets
+
+Bundled presets are under `app/src/main/assets/presets/`. The schema and validation rules are documented in [docs/PRESET_FORMAT.md](docs/PRESET_FORMAT.md).
 
 ## Roadmap
 
-- [x] Android/Compose project structure
-- [x] HOME activity and launchable-app catalogue
-- [x] Versioned JSON preset model and starter preset
-- [x] Native clock and app-list components
-- [ ] Package add/remove refresh and lifecycle-safe catalogue
-- [ ] Schema validation and preset error reporting
-- [ ] Optional Shizuku capability detection and service integration
-- [ ] Grid, dock, widget, and gesture components
-- [ ] Visual editor and code editor sharing one schema
-- [ ] .omni archive importer and exporter
-- [ ] Community preset catalogue and CI validation
+- [x] Native HOME activity and app launching
+- [x] Versioned JSON model and validation
+- [x] Component registry with grid, list, dock, stack and clock
+- [x] Live switching between bundled presets
+- [x] Reactive clock and package-change app catalogue
+- [x] Optional root capability probe and Shizuku presence detection
+- [ ] Shizuku binder/user-service integration
+- [ ] Reviewed root/Shizuku operation adapters and capability policy
+- [ ] External preset import/export and safe .omni archive handling
+- [ ] Visual and code editors sharing the same document model
+- [ ] Community preset catalogue and CI schema validation
 
 ## License
 
-The repository currently contains an Apache License 2.0 license file. Earlier project copy mentioned GPL-3.0; these are different licenses. The existing repository license remains authoritative until the owner deliberately changes it.
+Omni Launcher is licensed under the **GNU General Public License v3.0 only**. See [LICENSE](LICENSE).

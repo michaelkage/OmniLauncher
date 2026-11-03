@@ -4,8 +4,8 @@
     "id": "org.omni.preset.minimal-wave",
     "name": "Minimal Wave",
     "author": "Omni Community",
-    "version": "1.0.0",
-    "engine_version": "0.1.0"
+    "version": "1.1.0",
+    "engine_version": "0.2.0"
   },
   "global_styles": {
     "font_family": "system_sans",
@@ -15,21 +15,10 @@
   "layout_hierarchy": {
     "type": "vertical_scroll_stack",
     "alignment": "start",
-    "padding": {
-      "top": 36,
-      "left": 24,
-      "right": 24,
-      "bottom": 24
-    },
+    "padding": { "top": 36, "left": 24, "right": 24, "bottom": 24 },
     "components": [
       { "type": "clock_widget", "style": "minimal_text_24h" },
-      {
-        "type": "app_list_container",
-        "behavior": "alphabetical",
-        "show_labels": true,
-        "max_visible_items": 24,
-        "filter": { "exclude_categories": [] }
-      }
+      { "type": "list", "behavior": "alphabetical", "show_labels": true, "spacing": 8 }
     ]
   }
 }

@@ -1,0 +1,22 @@
+{
+  "schema_version": 1,
+  "preset_metadata": {
+    "id": "org.omni.preset.pixel-grid",
+    "name": "Pixel Grid",
+    "author": "Omni Community",
+    "version": "1.0.0",
+    "engine_version": "0.2.0"
+  },
+  "global_styles": { "font_family": "system_sans", "animation_curve": "standard" },
+  "interaction_matrix": [],
+  "layout_hierarchy": {
+    "type": "vertical_scroll_stack",
+    "alignment": "center",
+    "padding": { "top": 32, "left": 20, "right": 20, "bottom": 24 },
+    "components": [
+      { "type": "clock_widget", "style": "minimal_text_24h" },
+      { "type": "grid", "columns": 4, "spacing": 12, "show_labels": true, "max_visible_items": 24 },
+      { "type": "dock", "spacing": 18, "show_labels": false, "max_visible_items": 5 }
+    ]
+  }
+}

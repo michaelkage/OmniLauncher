@@ -57,10 +57,14 @@ data class LayoutComponent(
     val behavior: String? = null,
     @SerialName("show_labels") val showLabels: Boolean = true,
     @SerialName("max_visible_items") val maxVisibleItems: Int? = null,
+    val columns: Int = 4,
+    val spacing: Int = 10,
+    val children: List<LayoutComponent> = emptyList(),
     val filter: AppFilter? = null
 )
 
 @Serializable
 data class AppFilter(
-    @SerialName("exclude_categories") val excludeCategories: List<String> = emptyList()
+    @SerialName("exclude_categories") val excludeCategories: List<String> = emptyList(),
+    @SerialName("exclude_packages") val excludePackages: List<String> = emptyList()
 )

@@ -1,33 +1,50 @@
-# Omni preset format (schema version 1)
+# Omni preset format — schema version 1
 
-A preset is a declarative description of a launcher surface. It is data, not executable code.
+Presets are declarative JSON documents. They are data, not executable code.
 
-## Top-level fields
+## Top-level structure
 
-| Field | Type | Purpose |
+- schema_version: currently 1
+- preset_metadata: stable ID, name, author and version fields
+- global_styles: shared visual tokens
+- interaction_matrix: data-only interaction declarations
+- layout_hierarchy: root layout and ordered components
+
+## Root layout
+
+The initial renderer supports `vertical_scroll_stack`. Padding values are density-independent pixels and must be between 0 and 256.
+
+## Component registry
+
+| Type | Purpose | Supported properties |
 | --- | --- | --- |
-| schema_version | integer | Format version for compatibility checks |
-| preset_metadata | object | Stable ID, display name, author and versions |
-| global_styles | object | Shared visual tokens |
-| interaction_matrix | array | Declarative gesture-to-action mappings |
-| layout_hierarchy | object | Root layout node |
+| clock_widget | Reactive local clock | style |
+| list / app_list_container | Scrollable app list | show_labels, max_visible_items, spacing, filter |
+| grid | App grid | columns (1–8), show_labels, max_visible_items, spacing |
+| dock | Horizontal app strip | show_labels, max_visible_items, spacing |
+| stack | Nested card/stack container | children, spacing |
 
-## Initial layout components
+All component types are registered in the native `ComponentRegistry`. Unknown types are validation errors; the renderer never attempts to execute unknown content.
 
-- vertical_scroll_stack: vertically scrollable root container.
-- clock_widget: system clock text.
-- app_list_container: launchable application list.
+## Validation limits
 
-Each component declares a supported type and the properties relevant to that type. Unknown properties are ignored for forward compatibility. Unknown component types should be reported rather than interpreted as executable instructions.
+- schema_version must match the engine-supported version
+- metadata ID and name must not be blank
+- at most 100 components per container
+- maximum component nesting depth: 12
+- max_visible_items: 1–500
+- columns: 1–8
+- spacing: 0–64 dp
+- padding: 0–256 dp
 
-## Interactions
+Validation reports a JSON-style path and a human-readable reason. Invalid presets do not replace the currently active preset.
 
-Interaction entries are data-only. The engine must map each recognized action to an explicit, reviewed implementation. Presets must not supply arbitrary Kotlin, JavaScript, shell commands, reflection targets, or binder transaction codes.
+## Filters
 
-## Planned .omni package
+`exclude_packages` supports explicit package-name exclusions. `exclude_categories` is reserved for a future category provider and is not yet applied by this prototype.
 
-A future .omni file may be a ZIP archive containing manifest.json, layout.json, and an assets/ directory. The importer must enforce archive size limits, reject path traversal and unsafe paths, validate the manifest and schema, and treat all content as untrusted. Executable scripts are intentionally excluded.
+## Interactions and package security
 
-## Compatibility
+Interaction entries are inert data until the engine explicitly implements a known trigger/action pair. Presets must not provide arbitrary Kotlin, JavaScript, shell commands, reflection targets, or binder transaction codes.
 
-The engine rejects unsupported schema versions with a useful error. Additive optional fields can be ignored by older renderers.
+A future `.omni` ZIP importer must enforce archive size limits, reject path traversal and unsafe paths, validate the manifest and schema, and treat every asset as untrusted. Executable scripts are intentionally excluded.
