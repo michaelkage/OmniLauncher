@@ -433,7 +433,7 @@ private fun OmniHome(
                     }
                 }
             },
-            confirmButton = { TextButton(onClick = { themeManagerOpen = false }) { Text("Done") }
+            confirmButton = { TextButton(onClick = { themeManagerOpen = false }) { Text("Done") } }
         )
     }
 
