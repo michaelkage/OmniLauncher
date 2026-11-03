@@ -138,6 +138,7 @@ private fun OmniHome(
     var preset by remember { mutableStateOf<PresetDocument?>(null) }
     var selectedPresetId by remember { mutableStateOf(preferences.getString("active_preset", "minimal-wave") ?: "minimal-wave") }
     var savedPresetIds by remember { mutableStateOf<List<String>>(emptyList()) }
+    var savedPresetIndexGeneration by remember { mutableStateOf(0) }
     var presetLoadGeneration by remember { mutableStateOf(0) }
     var appCatalogueGeneration by remember { mutableStateOf(0) }
     var apps by remember { mutableStateOf<List<LaunchableApp>>(emptyList()) }
@@ -181,8 +182,13 @@ private fun OmniHome(
     }
 
     fun refreshSavedPresetIds() {
+        val requestGeneration = savedPresetIndexGeneration + 1
+        savedPresetIndexGeneration = requestGeneration
         scope.launch {
-            savedPresetIds = withContext(Dispatchers.IO) { repository.savedPresetIds() }
+            val result = withContext(Dispatchers.IO) { repository.savedPresetIds() }
+            if (savedPresetIndexGeneration == requestGeneration) {
+                savedPresetIds = result
+            }
         }
     }
 
