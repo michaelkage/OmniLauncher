@@ -35,7 +35,7 @@ Neither elevated backend is required to launch apps, render presets, switch layo
 - Strict declarative theme-pack schema, codec, and bounded private-storage repository with safe identifiers and validated colour tokens
 - Reactive app catalogue refreshed on package add/remove/change broadcasts
 - Live bundled-preset switching
-- Visual layout editor for adding/removing/reordering components at the root and inside nested stacks, with app-label, grid-column, spacing, and visible-app controls; changes are validated and saved privately
+- Visual layout editor for adding/removing/reordering components at the root and inside nested stacks, including long-press drag handles and Move up / Move down controls; app-label, grid-column, spacing, and visible-app controls; changes are validated and saved privately
 - Persisted appearance preferences with wallpaper-derived Material You colours where supported
 - Persistent active-preset selection with distinct bundled and saved-copy entries, plus private storage for imported presets
 - Bounded .omni archive import/export through Android's document picker
