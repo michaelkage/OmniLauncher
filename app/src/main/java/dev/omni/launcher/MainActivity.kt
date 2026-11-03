@@ -164,9 +164,13 @@ private fun OmniHome(
     var themePackToExport by remember { mutableStateOf<ThemePack?>(null) }
 
     fun refreshApps() {
-        runCatching { AppCatalogue(context).load() }
-            .onSuccess { apps = it }
-            .onFailure { error = "App catalogue: ${it.message ?: "refresh failed"}" }
+        scope.launch {
+            val result = runCatching {
+                withContext(Dispatchers.IO) { AppCatalogue(context).load() }
+            }
+            result.onSuccess { apps = it }
+                .onFailure { error = "App catalogue: ${it.message ?: "refresh failed"}" }
+        }
     }
 
     fun selectPreset(selectionId: String) {
