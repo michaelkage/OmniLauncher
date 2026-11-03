@@ -36,7 +36,7 @@ The initial renderer supports vertical_scroll_stack. Padding values are density-
 | dock | Horizontal app strip | show_labels, max_visible_items, spacing |
 | stack | Nested card/stack container | children, spacing |
 
-All component types are registered in the native ComponentRegistry. Unknown types are validation errors; the renderer never attempts to execute unknown content.
+All component types are registered in the native ComponentRegistry. Unknown types are validation errors; the renderer never attempts to execute unknown content. Grid and list components include an in-place search field that matches app labels and package names, case-insensitively.
 
 ## Validation limits
 
