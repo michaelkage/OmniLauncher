@@ -581,7 +581,7 @@ private fun OmniHome(
                                                 ) { change, dragAmount ->
                                                     change.consume()
                                                     totalDrag += dragAmount.y
-                                                    dragTargetIndex = dragTargetIndex(
+                                                    dragTargetIndex = calculateDragTargetIndex(
                                                         startIndex = index,
                                                         dragDistancePx = totalDrag,
                                                         rowHeightPx = threshold,
