@@ -51,10 +51,24 @@ import kotlinx.coroutines.withContext
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        val appearance = getSharedPreferences("omni_launcher", Context.MODE_PRIVATE)
         setContent {
-            MaterialTheme {
+            var themeMode by remember { mutableStateOf(appearance.getString("theme_mode", "system") ?: "system") }
+            var palette by remember { mutableStateOf(appearance.getString("theme_palette", "dynamic") ?: "dynamic") }
+            OmniTheme(mode = themeMode, palette = palette) {
                 Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
-                    OmniHome()
+                    OmniHome(
+                        themeMode = themeMode,
+                        palette = palette,
+                        onThemeModeChange = {
+                            themeMode = it
+                            appearance.edit().putString("theme_mode", it).apply()
+                        },
+                        onPaletteChange = {
+                            palette = it
+                            appearance.edit().putString("theme_palette", it).apply()
+                        }
+                    )
                 }
             }
         }
@@ -62,7 +76,12 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-private fun OmniHome() {
+private fun OmniHome(
+    themeMode: String,
+    palette: String,
+    onThemeModeChange: (String) -> Unit,
+    onPaletteChange: (String) -> Unit
+) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val repository = remember { PresetRepository(context) }
@@ -73,6 +92,7 @@ private fun OmniHome() {
     var error by remember { mutableStateOf<String?>(null) }
     var presetMenuOpen by remember { mutableStateOf(false) }
     var accessDialogOpen by remember { mutableStateOf(false) }
+    var appearanceDialogOpen by remember { mutableStateOf(false) }
     var accessStatus by remember { mutableStateOf<AccessCapabilities?>(null) }
     var accessChecking by remember { mutableStateOf(false) }
     var exportDocument by remember { mutableStateOf<PresetDocument?>(null) }
@@ -193,6 +213,7 @@ private fun OmniHome() {
                         exportLauncher.launch("${preset?.metadata?.id ?: "omni"}.omni")
                     }
                 ) { Text("Export") }
+                TextButton(onClick = { appearanceDialogOpen = true }) { Text("Style") }
                 TextButton(onClick = { accessDialogOpen = true }) { Text("Access") }
             }
         }
@@ -215,6 +236,51 @@ private fun OmniHome() {
                 }
             }
         }
+    }
+
+
+    if (appearanceDialogOpen) {
+        AlertDialog(
+            onDismissRequest = { appearanceDialogOpen = false },
+            title = { Text("Appearance") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Text("Theme", style = MaterialTheme.typography.titleSmall)
+                    listOf("system" to "Follow device", "light" to "Light", "dark" to "Dark").forEach { (value, label) ->
+                        Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+                            androidx.compose.material3.RadioButton(
+                                selected = themeMode == value,
+                                onClick = { onThemeModeChange(value) }
+                            )
+                            Text(label, modifier = Modifier.clickable { onThemeModeChange(value) })
+                        }
+                    }
+                    Text("Colour style", style = MaterialTheme.typography.titleSmall)
+                    listOf(
+                        "dynamic" to "Material You (wallpaper)",
+                        "ocean" to "Ocean",
+                        "forest" to "Forest",
+                        "plum" to "Plum"
+                    ).forEach { (value, label) ->
+                        Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+                            androidx.compose.material3.RadioButton(
+                                selected = palette == value,
+                                onClick = { onPaletteChange(value) }
+                            )
+                            Text(label, modifier = Modifier.clickable { onPaletteChange(value) })
+                        }
+                    }
+                    Text(
+                        "Material You wallpaper colours are available on Android 12 and newer. Other palettes work as fallbacks.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { appearanceDialogOpen = false }) { Text("Done") }
+            }
+        )
     }
 
     if (accessDialogOpen) {
