@@ -2,10 +2,13 @@ package dev.omni.launcher.preset
 
 import android.content.Context
 import kotlinx.serialization.SerializationException
+import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
+import java.io.File
+import java.io.InputStream
+import java.io.OutputStream
 
 data class PresetChoice(val id: String, val title: String, val assetPath: String)
-
 data class PresetValidationIssue(val path: String, val message: String)
 
 class PresetValidationException(
@@ -20,7 +23,9 @@ class PresetRepository(context: Context) {
         ignoreUnknownKeys = false
         isLenient = false
         coerceInputValues = false
+        prettyPrint = true
     }
+    private val savedDirectory = File(appContext.filesDir, "presets").apply { mkdirs() }
 
     val bundledPresets = listOf(
         PresetChoice("minimal-wave", "Minimal Wave", "presets/minimal-wave.json"),
@@ -32,6 +37,48 @@ class PresetRepository(context: Context) {
         val choice = bundledPresets.firstOrNull { it.id == id }
             ?: throw IllegalArgumentException("Unknown bundled preset: $id")
         val source = appContext.assets.open(choice.assetPath).bufferedReader().use { it.readText() }
+        return decodeAndValidate(source)
+    }
+
+    fun loadSavedPreset(id: String): PresetDocument {
+        val file = savedFile(id)
+        require(file.isFile) { "Saved preset '$id' was not found." }
+        return decodeAndValidate(file.readText(Charsets.UTF_8))
+    }
+
+    fun savedPresetIds(): List<String> = savedDirectory.listFiles()
+        .orEmpty()
+        .filter { it.isFile && it.extension == "json" }
+        .map { it.nameWithoutExtension }
+        .sorted()
+
+    fun importOmni(input: InputStream): PresetDocument =
+        PresetArchive.read(input, ::decodeAndValidate).also(::saveImportedPreset)
+
+    fun exportOmni(document: PresetDocument, output: OutputStream) {
+        val issues = validate(document)
+        if (issues.isNotEmpty()) throw PresetValidationException(issues)
+        PresetArchive.write(json.encodeToString(document), output)
+    }
+
+    fun saveImportedPreset(document: PresetDocument) {
+        val issues = validate(document)
+        if (issues.isNotEmpty()) throw PresetValidationException(issues)
+        val target = savedFile(document.metadata.id)
+        val temporary = File(savedDirectory, "${target.name}.tmp")
+        temporary.writeText(json.encodeToString(document), Charsets.UTF_8)
+        if (!temporary.renameTo(target)) {
+            temporary.copyTo(target, overwrite = true)
+            temporary.delete()
+        }
+    }
+
+    private fun savedFile(id: String): File {
+        require(id.matches(Regex("[A-Za-z0-9._-]{1,64}"))) { "Preset ID contains unsupported characters." }
+        return File(savedDirectory, "$id.json")
+    }
+
+    private fun decodeAndValidate(source: String): PresetDocument {
         val document = try {
             json.decodeFromString<PresetDocument>(source)
         } catch (error: SerializationException) {
@@ -92,7 +139,6 @@ class PresetRepository(context: Context) {
                 validateComponents(component.children, "$componentPath.children", depth + 1)
             }
         }
-
         validateComponents(document.layout.components, "$.layout_hierarchy.components", 1)
         return issues
     }
