@@ -37,4 +37,6 @@ dependencies {
     implementation(libs.androidx.compose.foundation)
     implementation(libs.kotlinx.serialization.json)
     debugImplementation(libs.androidx.compose.ui.tooling)
+
+    testImplementation("junit:junit:4.13.2")
 }
