@@ -42,6 +42,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.graphics.Shape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.layout.size
@@ -141,6 +143,7 @@ private fun OmniHome(
     var layoutEditorOpen by remember { mutableStateOf(false) }
     var editorComponents by remember { mutableStateOf<List<dev.omni.launcher.preset.LayoutComponent>>(emptyList()) }
     var editorStackPath by remember { mutableStateOf<List<Int>>(emptyList()) }
+    var draggingComponentIndex by remember { mutableStateOf<Int?>(null) }
     var addComponentMenuOpen by remember { mutableStateOf(false) }
     var customizeLabels by remember { mutableStateOf(true) }
     var customizeColumns by remember { mutableStateOf(4f) }
@@ -466,7 +469,12 @@ private fun OmniHome(
                         ) {
                             itemsIndexed(currentComponents) { index, component ->
                                 Column(
-                                    modifier = Modifier.fillMaxWidth().padding(vertical = 5.dp),
+                                    modifier = Modifier.fillMaxWidth()
+                                        .background(
+                                            color = if (draggingComponentIndex == index) MaterialTheme.colorScheme.secondaryContainer else Color.Transparent,
+                                            shape = RoundedCornerShape(12.dp)
+                                        )
+                                        .padding(horizontal = 8.dp, vertical = 8.dp),
                                     verticalArrangement = Arrangement.spacedBy(3.dp)
                                 ) {
                                     Row(
@@ -538,11 +546,12 @@ private fun OmniHome(
                                     )
                                     Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                                         Text(
-                                            "↕ Drag",
+                                            "Hold ↕ Drag",
                                             modifier = Modifier.pointerInput(index) {
                                                 var totalDrag = 0f
                                                 val threshold = 42.dp.toPx()
                                                 detectDragGesturesAfterLongPress(
+                                                    onDragStart = { draggingComponentIndex = index },
                                                     onDragEnd = {
                                                         val requestedOffset = (totalDrag / threshold).roundToInt()
                                                         val destination = (index + requestedOffset)
@@ -554,8 +563,12 @@ private fun OmniHome(
                                                                 editorStackPath
                                                             ) { items -> moveComponent(items, index, offset) }
                                                         }
+                                                        draggingComponentIndex = null
                                                     },
-                                                    onDragCancel = { totalDrag = 0f }
+                                                    onDragCancel = {
+                                                        totalDrag = 0f
+                                                        draggingComponentIndex = null
+                                                    }
                                                 ) { change, dragAmount ->
                                                     change.consume()
                                                     totalDrag += dragAmount.y
