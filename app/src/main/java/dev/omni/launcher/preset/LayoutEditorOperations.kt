@@ -76,7 +76,7 @@ internal fun updateComponentsAtPath(
  * Calculates the row index currently targeted by a vertical drag. The
  * displacement is rounded to the nearest row and clamped to the list bounds.
  */
-internal fun dragTargetIndex(
+internal fun calculateDragTargetIndex(
     startIndex: Int,
     dragDistancePx: Float,
     rowHeightPx: Float,
