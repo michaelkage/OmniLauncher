@@ -244,8 +244,11 @@ private fun OmniHome(
 
     LaunchedEffect(Unit) {
         val savedSelection = selectedPresetId.removePrefix("saved:")
-        val isLegacySavedSelection = !selectedPresetId.startsWith("saved:") &&
+        val migrationDone = preferences.getBoolean("preset_selection_namespace_v1_migrated", false)
+        val isLegacySavedSelection = !migrationDone &&
+            !selectedPresetId.startsWith("saved:") &&
             selectedPresetId in repository.savedPresetIds()
+        preferences.edit().putBoolean("preset_selection_namespace_v1_migrated", true).apply()
         selectPreset(
             if (selectedPresetId.startsWith("saved:") || isLegacySavedSelection) "saved:$savedSelection"
             else selectedPresetId
