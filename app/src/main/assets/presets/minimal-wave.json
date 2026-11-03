@@ -1,0 +1,35 @@
+{
+  "schema_version": 1,
+  "preset_metadata": {
+    "id": "org.omni.preset.minimal-wave",
+    "name": "Minimal Wave",
+    "author": "Omni Community",
+    "version": "1.0.0",
+    "engine_version": "0.1.0"
+  },
+  "global_styles": {
+    "font_family": "system_sans",
+    "animation_curve": "standard"
+  },
+  "interaction_matrix": [],
+  "layout_hierarchy": {
+    "type": "vertical_scroll_stack",
+    "alignment": "start",
+    "padding": {
+      "top": 36,
+      "left": 24,
+      "right": 24,
+      "bottom": 24
+    },
+    "components": [
+      { "type": "clock_widget", "style": "minimal_text_24h" },
+      {
+        "type": "app_list_container",
+        "behavior": "alphabetical",
+        "show_labels": true,
+        "max_visible_items": 24,
+        "filter": { "exclude_categories": [] }
+      }
+    ]
+  }
+}
