@@ -139,6 +139,7 @@ private fun OmniHome(
     var selectedPresetId by remember { mutableStateOf(preferences.getString("active_preset", "minimal-wave") ?: "minimal-wave") }
     var savedPresetIds by remember { mutableStateOf<List<String>>(emptyList()) }
     var presetLoadGeneration by remember { mutableStateOf(0) }
+    var appCatalogueGeneration by remember { mutableStateOf(0) }
     var apps by remember { mutableStateOf<List<LaunchableApp>>(emptyList()) }
     var error by remember { mutableStateOf<String?>(null) }
     var presetMenuOpen by remember { mutableStateOf(false) }
@@ -166,12 +167,16 @@ private fun OmniHome(
     var themePackToExport by remember { mutableStateOf<ThemePack?>(null) }
 
     fun refreshApps() {
+        val requestGeneration = appCatalogueGeneration + 1
+        appCatalogueGeneration = requestGeneration
         scope.launch {
             val result = runCatching {
                 withContext(Dispatchers.IO) { AppCatalogue(context).load() }
             }
-            result.onSuccess { apps = it }
-                .onFailure { error = "App catalogue: ${it.message ?: "refresh failed"}" }
+            if (appCatalogueGeneration == requestGeneration) {
+                result.onSuccess { apps = it }
+                    .onFailure { error = "App catalogue: ${it.message ?: "refresh failed"}" }
+            }
         }
     }
 
@@ -801,6 +806,7 @@ private fun OmniHome(
                                 withContext(Dispatchers.IO) { repository.saveImportedPreset(updated) }
                             }
                             result.onSuccess {
+                                presetLoadGeneration += 1
                                 preset = updated
                                 selectedPresetId = "saved:${updated.metadata.id}"
                                 preferences.edit().putString("active_preset", selectedPresetId).apply()
