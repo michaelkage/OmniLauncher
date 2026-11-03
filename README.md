@@ -37,7 +37,7 @@ Neither elevated backend is required to launch apps, render presets, switch layo
 - Live bundled-preset switching
 - Visual layout editor for adding/removing/reordering components at the root and inside nested stacks, with app-label, grid-column, spacing, and visible-app controls; changes are validated and saved privately
 - Persisted appearance preferences with wallpaper-derived Material You colours where supported
-- Persistent active-preset selection and private storage for imported presets
+- Persistent active-preset selection with distinct bundled and saved-copy entries, plus private storage for imported presets
 - Bounded .omni archive import/export through Android's document picker
 - Unit tests for archive safety and app-search matching
 - Optional privilege capability layer
@@ -48,7 +48,7 @@ Open in Android Studio with JDK 17 and Android SDK 36. Sync Gradle and run the a
 
 ## Presets
 
-Bundled presets are under app/src/main/assets/presets/. Imported presets are stored in the app's private files directory. Use **Import** to select a .omni archive and **Export** to write the active preset. The archive currently contains exactly one layout.json; scripts and extra archive entries are rejected. See docs/PRESET_FORMAT.md.
+Bundled presets are under app/src/main/assets/presets/. Imported presets are stored in the app's private files directory and appear separately from bundled presets, even when they share a preset ID. Saving edits creates/updates the saved copy without replacing the bundled entry. Use **Import** to select a .omni archive and **Export** to write the active preset. The archive currently contains exactly one layout.json; scripts and extra archive entries are rejected. See docs/PRESET_FORMAT.md.
 
 ## Roadmap
 
