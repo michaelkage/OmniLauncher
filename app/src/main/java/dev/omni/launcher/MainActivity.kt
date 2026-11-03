@@ -11,6 +11,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -40,6 +41,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.layout.size
@@ -61,6 +63,7 @@ import dev.omni.launcher.theme.ThemePackRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlin.math.roundToInt
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -534,6 +537,33 @@ private fun OmniHome(
                                         steps = 15
                                     )
                                     Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                                        Text(
+                                            "↕ Drag",
+                                            modifier = Modifier.pointerInput(index) {
+                                                var totalDrag = 0f
+                                                val threshold = 42.dp.toPx()
+                                                detectDragGesturesAfterLongPress(
+                                                    onDragEnd = {
+                                                        val requestedOffset = (totalDrag / threshold).roundToInt()
+                                                        val destination = (index + requestedOffset)
+                                                            .coerceIn(0, currentComponents.lastIndex)
+                                                        val offset = destination - index
+                                                        if (offset != 0) {
+                                                            editorComponents = updateComponentsAtPath(
+                                                                editorComponents,
+                                                                editorStackPath
+                                                            ) { items -> moveComponent(items, index, offset) }
+                                                        }
+                                                    },
+                                                    onDragCancel = { totalDrag = 0f }
+                                                ) { change, dragAmount ->
+                                                    change.consume()
+                                                    totalDrag += dragAmount.y
+                                                }
+                                            },
+                                            style = MaterialTheme.typography.labelMedium,
+                                            color = MaterialTheme.colorScheme.primary
+                                        )
                                         TextButton(
                                             enabled = index > 0,
                                             onClick = {
