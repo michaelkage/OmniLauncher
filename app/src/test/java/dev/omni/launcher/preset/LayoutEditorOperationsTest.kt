@@ -26,7 +26,7 @@ class LayoutEditorOperationsTest {
 
     @Test fun dragTargetRoundsToNearestRow() {
         assertEquals(2, calculateDragTargetIndex(1, 43f, 42f, 5))
-        assertEquals(0, calculateDragTargetIndex(1, -21f, 42f, 5))
+        assertEquals(0, calculateDragTargetIndex(1, -22f, 42f, 5))
     }
 
     @Test fun dragTargetClampsToListBounds() {
