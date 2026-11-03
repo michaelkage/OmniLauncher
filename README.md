@@ -31,7 +31,7 @@ Neither elevated backend is required to launch apps, render presets, switch layo
 - Typed preset model, validator, and bundled preset repository
 - Component registry: clock, grid, list, dock, and stack
 - Searchable app grids and lists (matches app labels and package names)
-- Theme manager for importing validated JSON packs, applying custom light/dark palettes, and removing installed themes
+- Theme manager for importing, previewing, applying, exporting, and removing validated JSON theme packs
 - Strict declarative theme-pack schema, codec, and bounded private-storage repository with safe identifiers and validated colour tokens
 - Reactive app catalogue refreshed on package add/remove/change broadcasts
 - Live bundled-preset switching
