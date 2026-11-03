@@ -101,7 +101,7 @@ private fun OmniHome() {
                 val result = runCatching {
                     withContext(Dispatchers.IO) {
                         val input = context.contentResolver.openInputStream(uri)
-                            ?: error("Could not open the selected archive.")
+                            ?: throw IllegalStateException("Could not open the selected archive.")
                         repository.importOmni(input)
                     }
                 }
@@ -123,7 +123,7 @@ private fun OmniHome() {
                 val result = runCatching {
                     withContext(Dispatchers.IO) {
                         val output = context.contentResolver.openOutputStream(uri)
-                            ?: error("Could not create the destination file.")
+                            ?: throw IllegalStateException("Could not create the destination file.")
                         repository.exportOmni(document, output)
                     }
                 }
