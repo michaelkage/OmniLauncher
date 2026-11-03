@@ -14,6 +14,10 @@ Presets are declarative JSON documents. They are data, not executable code.
 
 The current app-level appearance setting is stored separately from a preset so switching layouts does not unexpectedly reset the user's preferred look. Users can choose system/light/dark mode and Material You wallpaper colours (Android 12+) or the built-in Ocean, Forest, and Plum palettes. These preferences are not yet serialized into `layout.json`.
 
+## In-app layout customization
+
+The current customization panel can change app-label visibility, grid column count, and the maximum visible app count for supported app components. Applying changes saves a private copy of the active preset on-device; exporting the active preset shares those changes in the existing `.omni` format. Appearance preferences remain app-level settings and are not serialized into the layout.
+
 ## Add-on direction
 
 Future add-ons are planned as signed/validated declarative resource packs: appearance palettes, icon metadata, fonts, and additional native component definitions. The current prototype does not load third-party executable code, scripts, or arbitrary WebView extensions. Add-on permissions, provenance, size limits, and compatibility will need explicit review before a catalogue is enabled.
