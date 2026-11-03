@@ -31,7 +31,8 @@ Neither elevated backend is required to launch apps, render presets, switch layo
 - Typed preset model, validator, and bundled preset repository
 - Component registry: clock, grid, list, dock, and stack
 - Searchable app grids and lists (matches app labels and package names)
-- Strict declarative theme-pack schema, codec, and bounded private-storage repository with safe identifiers and validated colour tokens (management UI is not yet wired up)
+- Theme manager for importing validated JSON packs, applying custom light/dark palettes, and removing installed themes
+- Strict declarative theme-pack schema, codec, and bounded private-storage repository with safe identifiers and validated colour tokens
 - Reactive app catalogue refreshed on package add/remove/change broadcasts
 - Live bundled-preset switching
 - In-app layout customization for app labels, grid columns, and visible app limits, saved privately and exportable as a preset
@@ -63,7 +64,7 @@ Bundled presets are under app/src/main/assets/presets/. Imported presets are sto
 - [ ] Shizuku binder/user-service integration
 - [ ] Reviewed root/Shizuku operation adapters and capability policy
 - [x] Initial data-only theme-pack format and validation codec
-- [ ] Theme-pack import, local library, preview, apply, and remove UI
+- [x] Theme-pack import, local library, apply, and remove UI
 - [ ] Validated add-on catalogue for appearance, icon, font, and component packs with explicit permissions and resource limits
 - [ ] Asset-bearing .omni bundles with safe image resource handling
 - [ ] Visual and code editors sharing the same document model
