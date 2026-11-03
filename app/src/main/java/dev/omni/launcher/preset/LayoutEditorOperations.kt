@@ -71,3 +71,20 @@ internal fun updateComponentsAtPath(
         it[index] = stack.copy(children = updatedChildren)
     }
 }
+
+/**
+ * Calculates the row index currently targeted by a vertical drag. The
+ * displacement is rounded to the nearest row and clamped to the list bounds.
+ */
+internal fun dragTargetIndex(
+    startIndex: Int,
+    dragDistancePx: Float,
+    rowHeightPx: Float,
+    itemCount: Int
+): Int {
+    require(rowHeightPx > 0f) { "Row height must be positive." }
+    if (itemCount <= 0) return -1
+    require(startIndex in 0 until itemCount) { "Start index is outside the list." }
+    val offset = (dragDistancePx / rowHeightPx).let { kotlin.math.round(it).toInt() }
+    return (startIndex + offset).coerceIn(0, itemCount - 1)
+}
