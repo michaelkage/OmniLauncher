@@ -627,7 +627,7 @@ private fun OmniHome(
                             }
                             result.onSuccess {
                                 preset = updated
-                                selectedPresetId = updated.metadata.id
+                                selectedPresetId = "saved:${updated.metadata.id}"
                                 preferences.edit().putString("active_preset", selectedPresetId).apply()
                                 error = "Saved launcher customizations."
                                 customizeDialogOpen = false
