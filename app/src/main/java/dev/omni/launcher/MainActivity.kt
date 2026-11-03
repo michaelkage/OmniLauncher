@@ -581,9 +581,12 @@ private fun OmniHome(
                                                 ) { change, dragAmount ->
                                                     change.consume()
                                                     totalDrag += dragAmount.y
-                                                    val requestedOffset = (totalDrag / threshold).roundToInt()
-                                                    dragTargetIndex = (index + requestedOffset)
-                                                        .coerceIn(0, currentComponents.lastIndex)
+                                                    dragTargetIndex = dragTargetIndex(
+                                                        startIndex = index,
+                                                        dragDistancePx = totalDrag,
+                                                        rowHeightPx = threshold,
+                                                        itemCount = currentComponents.size
+                                                    )
                                                 }
                                             },
                                             style = MaterialTheme.typography.labelMedium,
