@@ -1,5 +1,7 @@
 package dev.omni.launcher.preset
 
+import android.content.Intent
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -27,6 +29,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -140,8 +143,12 @@ private fun StackRenderer(component: LayoutComponent, apps: List<LaunchableApp>)
 
 @Composable
 private fun AppRow(app: LaunchableApp, showLabel: Boolean) {
+    val context = LocalContext.current
     Row(
-        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { context.startActivity(Intent().setComponent(app.componentName)) }
+            .padding(vertical = 4.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         androidx.compose.foundation.Image(
@@ -161,8 +168,11 @@ private fun AppRow(app: LaunchableApp, showLabel: Boolean) {
 
 @Composable
 private fun AppTile(app: LaunchableApp, showLabel: Boolean) {
+    val context = LocalContext.current
     Column(
-        modifier = Modifier.padding(6.dp),
+        modifier = Modifier
+            .clickable { context.startActivity(Intent().setComponent(app.componentName)) }
+            .padding(6.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(4.dp)
     ) {
