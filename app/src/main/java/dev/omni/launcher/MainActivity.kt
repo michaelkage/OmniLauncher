@@ -403,6 +403,58 @@ private fun OmniHome(
                                         "${index + 1}. ${component.type.replace('_', ' ')}",
                                         style = MaterialTheme.typography.titleSmall
                                     )
+                                    if (component.type in setOf("grid", "list", "app_list_container", "dock")) {
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            horizontalArrangement = Arrangement.SpaceBetween,
+                                            verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
+                                        ) {
+                                            Text("Show app labels", style = MaterialTheme.typography.bodySmall)
+                                            Switch(
+                                                checked = component.showLabels,
+                                                onCheckedChange = { checked ->
+                                                    editorComponents = editorComponents.toMutableList().also {
+                                                        it[index] = component.copy(showLabels = checked)
+                                                    }
+                                                }
+                                            )
+                                        }
+                                        Text("Visible apps: ${component.maxVisibleItems ?: 40}", style = MaterialTheme.typography.bodySmall)
+                                        Slider(
+                                            value = (component.maxVisibleItems ?: 40).toFloat(),
+                                            onValueChange = { value ->
+                                                editorComponents = editorComponents.toMutableList().also {
+                                                    it[index] = component.copy(maxVisibleItems = value.toInt())
+                                                }
+                                            },
+                                            valueRange = 8f..80f,
+                                            steps = 17
+                                        )
+                                    }
+                                    if (component.type == "grid") {
+                                        Text("Grid columns: ${component.columns}", style = MaterialTheme.typography.bodySmall)
+                                        Slider(
+                                            value = component.columns.toFloat(),
+                                            onValueChange = { value ->
+                                                editorComponents = editorComponents.toMutableList().also {
+                                                    it[index] = component.copy(columns = value.toInt())
+                                                }
+                                            },
+                                            valueRange = 1f..8f,
+                                            steps = 6
+                                        )
+                                    }
+                                    Text("Spacing: ${component.spacing} dp", style = MaterialTheme.typography.bodySmall)
+                                    Slider(
+                                        value = component.spacing.toFloat(),
+                                        onValueChange = { value ->
+                                            editorComponents = editorComponents.toMutableList().also {
+                                                it[index] = component.copy(spacing = value.toInt())
+                                            }
+                                        },
+                                        valueRange = 0f..64f,
+                                        steps = 15
+                                    )
                                     Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                                         TextButton(
                                             enabled = index > 0,
