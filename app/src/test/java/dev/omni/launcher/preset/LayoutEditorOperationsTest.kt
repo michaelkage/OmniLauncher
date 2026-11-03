@@ -20,6 +20,10 @@ class LayoutEditorOperationsTest {
         assertEquals(listOf(clock, dock, grid), moveComponent(listOf(clock, grid, dock), 1, 1))
     }
 
+    @Test fun movesComponentMultiplePositionsForDragReordering() {
+        assertEquals(listOf(grid, dock, clock), moveComponent(listOf(clock, grid, dock), 0, 2))
+    }
+
     @Test fun ignoresOutOfRangeMove() {
         assertEquals(listOf(clock, grid), moveComponent(listOf(clock, grid), 0, -1))
     }
