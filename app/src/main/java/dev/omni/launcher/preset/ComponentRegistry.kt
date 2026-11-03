@@ -171,7 +171,7 @@ private fun AppTile(app: LaunchableApp, showLabel: Boolean) {
     val context = LocalContext.current
     Column(
         modifier = Modifier
-            .clickable { context.startActivity(Intent().setComponent(app.componentName)) }
+            .clickable { context.startActivity(Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER).setComponent(app.componentName)) }
             .padding(6.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(4.dp)
