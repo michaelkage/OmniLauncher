@@ -143,6 +143,7 @@ private fun OmniHome(
     var editorComponents by remember { mutableStateOf<List<dev.omni.launcher.preset.LayoutComponent>>(emptyList()) }
     var editorStackPath by remember { mutableStateOf<List<Int>>(emptyList()) }
     var draggingComponentIndex by remember { mutableStateOf<Int?>(null) }
+    var dragTargetIndex by remember { mutableStateOf<Int?>(null) }
     var addComponentMenuOpen by remember { mutableStateOf(false) }
     var customizeLabels by remember { mutableStateOf(true) }
     var customizeColumns by remember { mutableStateOf(4f) }
@@ -470,7 +471,11 @@ private fun OmniHome(
                                 Column(
                                     modifier = Modifier.fillMaxWidth()
                                         .background(
-                                            color = if (draggingComponentIndex == index) MaterialTheme.colorScheme.secondaryContainer else Color.Transparent,
+                                            color = when {
+                                                draggingComponentIndex == index -> MaterialTheme.colorScheme.secondaryContainer
+                                                dragTargetIndex == index && draggingComponentIndex != index -> MaterialTheme.colorScheme.tertiaryContainer
+                                                else -> Color.Transparent
+                                            },
                                             shape = RoundedCornerShape(12.dp)
                                         )
                                         .padding(horizontal = 8.dp, vertical = 8.dp),
@@ -550,10 +555,13 @@ private fun OmniHome(
                                                 var totalDrag = 0f
                                                 val threshold = 42.dp.toPx()
                                                 detectDragGesturesAfterLongPress(
-                                                    onDragStart = { draggingComponentIndex = index },
+                                                    onDragStart = {
+                                                        totalDrag = 0f
+                                                        draggingComponentIndex = index
+                                                        dragTargetIndex = index
+                                                    },
                                                     onDragEnd = {
-                                                        val requestedOffset = (totalDrag / threshold).roundToInt()
-                                                        val destination = (index + requestedOffset)
+                                                        val destination = (dragTargetIndex ?: index)
                                                             .coerceIn(0, currentComponents.lastIndex)
                                                         val offset = destination - index
                                                         if (offset != 0) {
@@ -563,14 +571,19 @@ private fun OmniHome(
                                                             ) { items -> moveComponent(items, index, offset) }
                                                         }
                                                         draggingComponentIndex = null
+                                                        dragTargetIndex = null
                                                     },
                                                     onDragCancel = {
                                                         totalDrag = 0f
                                                         draggingComponentIndex = null
+                                                        dragTargetIndex = null
                                                     }
                                                 ) { change, dragAmount ->
                                                     change.consume()
                                                     totalDrag += dragAmount.y
+                                                    val requestedOffset = (totalDrag / threshold).roundToInt()
+                                                    dragTargetIndex = (index + requestedOffset)
+                                                        .coerceIn(0, currentComponents.lastIndex)
                                                 }
                                             },
                                             style = MaterialTheme.typography.labelMedium,
