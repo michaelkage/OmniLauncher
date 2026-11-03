@@ -4,6 +4,7 @@ import android.content.Context
 import java.io.ByteArrayOutputStream
 import java.io.File
 import java.io.InputStream
+import java.io.OutputStream
 
 /**
  * Private app-storage repository for validated, data-only theme packs.
@@ -31,6 +32,15 @@ class ThemePackRepository(context: Context) {
             temporary.copyTo(target, overwrite = true)
             temporary.delete()
         }
+    }
+
+    fun export(pack: ThemePack, output: OutputStream) {
+        val bytes = ThemePackCodec.encode(pack).toByteArray(Charsets.UTF_8)
+        require(bytes.size <= ThemePackCodec.MAX_PACK_BYTES) {
+            "Theme pack exceeds the 64 KiB size limit."
+        }
+        output.write(bytes)
+        output.flush()
     }
 
     fun load(id: String): ThemePack {
