@@ -30,13 +30,14 @@ Neither elevated backend is required to launch apps, render presets, switch layo
 - HOME activity and native Compose renderer
 - Typed preset model, validator, and bundled preset repository
 - Component registry: clock, grid, list, dock, and stack
+- Searchable app grids and lists (matches app labels and package names)
 - Reactive app catalogue refreshed on package add/remove/change broadcasts
 - Live bundled-preset switching
 - In-app layout customization for app labels, grid columns, and visible app limits, saved privately and exportable as a preset
 - Persisted appearance preferences with wallpaper-derived Material You colours where supported
 - Persistent active-preset selection and private storage for imported presets
 - Bounded .omni archive import/export through Android's document picker
-- Unit tests for archive round-trips and rejection of malformed or unsafe archive inputs
+- Unit tests for archive safety and app-search matching
 - Optional privilege capability layer
 
 ## Getting started
