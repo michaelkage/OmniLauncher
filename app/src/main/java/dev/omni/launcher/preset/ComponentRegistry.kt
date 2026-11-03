@@ -88,7 +88,9 @@ private fun ClockRenderer(component: LayoutComponent) {
 @Composable
 private fun ListRenderer(component: LayoutComponent, apps: List<LaunchableApp>) {
     var query by remember { mutableStateOf("") }
-    val visible = filteredApps(component, apps, query)
+    val visible = remember(apps, component.filter, component.maxVisibleItems, query) {
+        filteredApps(component, apps, query)
+    }
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         AppSearchField(query = query, onQueryChange = { query = it })
         if (visible.isEmpty()) {
@@ -109,7 +111,9 @@ private fun ListRenderer(component: LayoutComponent, apps: List<LaunchableApp>) 
 @Composable
 private fun GridRenderer(component: LayoutComponent, apps: List<LaunchableApp>) {
     var query by remember { mutableStateOf("") }
-    val visible = filteredApps(component, apps, query)
+    val visible = remember(apps, component.filter, component.maxVisibleItems, query) {
+        filteredApps(component, apps, query)
+    }
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         AppSearchField(query = query, onQueryChange = { query = it })
         if (visible.isEmpty()) {
@@ -131,7 +135,9 @@ private fun GridRenderer(component: LayoutComponent, apps: List<LaunchableApp>) 
 
 @Composable
 private fun DockRenderer(component: LayoutComponent, apps: List<LaunchableApp>) {
-    val visible = filteredApps(component, apps).take(component.maxVisibleItems ?: 5)
+    val visible = remember(apps, component.filter, component.maxVisibleItems) {
+        filteredApps(component, apps).take(component.maxVisibleItems ?: 5)
+    }
     Row(
         modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(vertical = 8.dp),
         horizontalArrangement = Arrangement.spacedBy(component.spacing.dp),
