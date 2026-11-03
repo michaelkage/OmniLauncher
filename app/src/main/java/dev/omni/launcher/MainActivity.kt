@@ -19,6 +19,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DropdownMenu
@@ -128,6 +129,9 @@ private fun OmniHome(
     var installedThemePacks by remember { mutableStateOf<List<ThemePack>>(emptyList()) }
     var themePackBusy by remember { mutableStateOf(false) }
     var customizeDialogOpen by remember { mutableStateOf(false) }
+    var layoutEditorOpen by remember { mutableStateOf(false) }
+    var editorComponents by remember { mutableStateOf<List<dev.omni.launcher.preset.LayoutComponent>>(emptyList()) }
+    var addComponentMenuOpen by remember { mutableStateOf(false) }
     var customizeLabels by remember { mutableStateOf(true) }
     var customizeColumns by remember { mutableStateOf(4f) }
     var customizeMaxApps by remember { mutableStateOf(40f) }
@@ -302,6 +306,13 @@ private fun OmniHome(
                 TextButton(onClick = {
                     val current = preset
                     if (current != null) {
+                        editorComponents = current.layout.components
+                        layoutEditorOpen = true
+                    }
+                }) { Text("Edit layout") }
+                TextButton(onClick = {
+                    val current = preset
+                    if (current != null) {
                         val all = flattenComponents(current.layout.components)
                         customizeLabels = all.firstOrNull { it.type in setOf("grid", "list", "dock", "app_list_container") }?.showLabels ?: true
                         customizeColumns = (all.firstOrNull { it.type == "grid" }?.columns ?: 4).toFloat()
@@ -334,6 +345,126 @@ private fun OmniHome(
     }
 
 
+
+    if (layoutEditorOpen) {
+        AlertDialog(
+            onDismissRequest = { layoutEditorOpen = false },
+            title = { Text("Visual layout editor") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Text(
+                        "Reorder, add, or remove top-level components. Nested stack editing and drag-and-drop are coming later.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Row {
+                        TextButton(onClick = { addComponentMenuOpen = true }) { Text("Add component") }
+                        DropdownMenu(
+                            expanded = addComponentMenuOpen,
+                            onDismissRequest = { addComponentMenuOpen = false }
+                        ) {
+                            listOf(
+                                "clock_widget" to "Clock",
+                                "grid" to "App grid",
+                                "list" to "App list",
+                                "dock" to "Dock",
+                                "stack" to "Stack"
+                            ).forEach { (type, label) ->
+                                DropdownMenuItem(
+                                    text = { Text(label) },
+                                    onClick = {
+                                        val component = when (type) {
+                                            "clock_widget" -> dev.omni.launcher.preset.LayoutComponent(type = type, style = "minimal_text_24h")
+                                            "grid" -> dev.omni.launcher.preset.LayoutComponent(type = type, columns = 4, maxVisibleItems = 40)
+                                            "list" -> dev.omni.launcher.preset.LayoutComponent(type = type, maxVisibleItems = 40)
+                                            "dock" -> dev.omni.launcher.preset.LayoutComponent(type = type, maxVisibleItems = 5)
+                                            else -> dev.omni.launcher.preset.LayoutComponent(type = type)
+                                        }
+                                        editorComponents = editorComponents + component
+                                        addComponentMenuOpen = false
+                                    }
+                                )
+                            }
+                        }
+                    }
+                    if (editorComponents.isEmpty()) {
+                        Text("Your layout is empty. Add a component to get started.")
+                    } else {
+                        LazyColumn(
+                            modifier = Modifier.fillMaxWidth().heightIn(max = 360.dp),
+                            verticalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            itemsIndexed(editorComponents) { index, component ->
+                                Column(
+                                    modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                                    verticalArrangement = Arrangement.spacedBy(2.dp)
+                                ) {
+                                    Text(
+                                        "${index + 1}. ${component.type.replace('_', ' ')}",
+                                        style = MaterialTheme.typography.titleSmall
+                                    )
+                                    Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                                        TextButton(
+                                            enabled = index > 0,
+                                            onClick = {
+                                                editorComponents = editorComponents.toMutableList().also {
+                                                    val item = it.removeAt(index)
+                                                    it.add(index - 1, item)
+                                                }
+                                            }
+                                        ) { Text("Move up") }
+                                        TextButton(
+                                            enabled = index < editorComponents.lastIndex,
+                                            onClick = {
+                                                editorComponents = editorComponents.toMutableList().also {
+                                                    val item = it.removeAt(index)
+                                                    it.add(index + 1, item)
+                                                }
+                                            }
+                                        ) { Text("Move down") }
+                                        TextButton(
+                                            onClick = {
+                                                editorComponents = editorComponents.toMutableList().also { it.removeAt(index) }
+                                            }
+                                        ) { Text("Remove") }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    val current = preset
+                    if (current != null) {
+                        val updated = current.copy(layout = current.layout.copy(components = editorComponents))
+                        scope.launch {
+                            val result = runCatching {
+                                withContext(Dispatchers.IO) {
+                                    val issues = repository.validate(updated)
+                                    require(issues.isEmpty()) {
+                                        issues.joinToString("\n") { "${it.path}: ${it.message}" }
+                                    }
+                                    repository.saveImportedPreset(updated)
+                                }
+                            }
+                            result.onSuccess {
+                                preset = updated
+                                selectedPresetId = updated.metadata.id
+                                preferences.edit().putString("active_preset", selectedPresetId).apply()
+                                error = "Saved visual layout."
+                                layoutEditorOpen = false
+                            }.onFailure { error = "Could not save layout: ${it.message}" }
+                        }
+                    }
+                }) { Text("Save layout") }
+            },
+            dismissButton = {
+                TextButton(onClick = { layoutEditorOpen = false }) { Text("Cancel") }
+            }
+        )
+    }
 
     if (customizeDialogOpen) {
         AlertDialog(
