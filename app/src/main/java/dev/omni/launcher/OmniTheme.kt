@@ -30,7 +30,13 @@ fun OmniTheme(
 
     val colors = if (palette == "custom" && customPack != null) {
         val selected = if (dark) customPack.palettes.dark else customPack.palettes.light
-        (if (dark) darkColorScheme else lightColorScheme)(
+        if (dark) darkColorScheme(
+            primary = token(selected.primary),
+            secondary = token(selected.secondary),
+            tertiary = token(selected.tertiary),
+            background = token(selected.background),
+            surface = token(selected.surface)
+        ) else lightColorScheme(
             primary = token(selected.primary),
             secondary = token(selected.secondary),
             tertiary = token(selected.tertiary),
