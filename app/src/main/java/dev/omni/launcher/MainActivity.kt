@@ -10,6 +10,8 @@ import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -148,11 +150,11 @@ private fun OmniHome() {
         if (document == null) {
             Text("No valid preset is active. Choose another preset or inspect the validation error.")
         } else {
-            Column(
+            LazyColumn(
                 modifier = Modifier.fillMaxWidth(),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                document.layout.components.forEach { component ->
+                itemsIndexed(document.layout.components) { _, component ->
                     ComponentRegistry.Render(component, apps)
                 }
             }
