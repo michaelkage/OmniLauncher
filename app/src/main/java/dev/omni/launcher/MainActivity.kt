@@ -134,6 +134,7 @@ private fun OmniHome(
     var accessStatus by remember { mutableStateOf<AccessCapabilities?>(null) }
     var accessChecking by remember { mutableStateOf(false) }
     var exportDocument by remember { mutableStateOf<PresetDocument?>(null) }
+    var themePackToExport by remember { mutableStateOf<ThemePack?>(null) }
 
     fun refreshApps() {
         runCatching { AppCatalogue(context).load() }
@@ -190,6 +191,24 @@ private fun OmniHome(
                     error = "Imported theme: ${pack.metadata.name}."
                 }.onFailure { error = "Theme import failed: ${it.message ?: "invalid theme pack"}" }
                 themePackBusy = false
+            }
+        }
+    }
+
+    val themePackExportLauncher = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/json")) { uri: Uri? ->
+        val pack = themePackToExport
+        themePackToExport = null
+        if (uri != null && pack != null) {
+            scope.launch {
+                val result = runCatching {
+                    withContext(Dispatchers.IO) {
+                        val output = context.contentResolver.openOutputStream(uri)
+                            ?: throw IllegalStateException("Could not create the theme file.")
+                        output.use { themePackRepository.export(pack, it) }
+                    }
+                }
+                result.onSuccess { error = "Exported theme: ${pack.metadata.name}." }
+                    .onFailure { error = "Theme export failed: ${it.message ?: "could not write file"}" }
             }
         }
     }
@@ -433,7 +452,12 @@ private fun OmniHome(
                                         }
                                     }
                                     Text(if (isActive) "Currently applied · tap to apply" else "Tap to apply", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
-                                    TextButton(onClick = {
+                                    Row {
+                                        TextButton(onClick = {
+                                            themePackToExport = pack
+                                            themePackExportLauncher.launch("${metadata.id}.json")
+                                        }) { Text("Export") }
+                                        TextButton(onClick = {
                                         scope.launch {
                                             val removed = withContext(Dispatchers.IO) { themePackRepository.remove(metadata.id) }
                                             installedThemePacks = withContext(Dispatchers.IO) { themePackRepository.list().map { themePackRepository.load(it.id) } }
@@ -441,6 +465,7 @@ private fun OmniHome(
                                             error = if (removed) "Removed theme ${metadata.name}." else "Theme was not found."
                                         }
                                     }) { Text("Remove") }
+                                    }
                                 }
                             }
                         }
