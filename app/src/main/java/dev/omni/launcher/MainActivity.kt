@@ -52,6 +52,8 @@ import dev.omni.launcher.preset.ComponentRegistry
 import dev.omni.launcher.preset.PresetDocument
 import dev.omni.launcher.preset.PresetRepository
 import dev.omni.launcher.preset.appendComponent
+import dev.omni.launcher.preset.componentsAtPath
+import dev.omni.launcher.preset.updateComponentsAtPath
 import dev.omni.launcher.preset.moveComponent
 import dev.omni.launcher.preset.removeComponent
 import dev.omni.launcher.theme.ThemePack
@@ -134,6 +136,7 @@ private fun OmniHome(
     var customizeDialogOpen by remember { mutableStateOf(false) }
     var layoutEditorOpen by remember { mutableStateOf(false) }
     var editorComponents by remember { mutableStateOf<List<dev.omni.launcher.preset.LayoutComponent>>(emptyList()) }
+    var editorStackPath by remember { mutableStateOf<List<Int>>(emptyList()) }
     var addComponentMenuOpen by remember { mutableStateOf(false) }
     var customizeLabels by remember { mutableStateOf(true) }
     var customizeColumns by remember { mutableStateOf(4f) }
@@ -197,8 +200,7 @@ private fun OmniHome(
                     onCustomThemePackChange(pack)
                     error = "Imported theme: ${pack.metadata.name}."
                 }.onFailure { error = "Theme import failed: ${it.message ?: "invalid theme pack"}" }
-                themePackBusy = false
-            }
+                themePackBusy = false            }
         }
     }
 
@@ -310,6 +312,7 @@ private fun OmniHome(
                     val current = preset
                     if (current != null) {
                         editorComponents = current.layout.components
+                        editorStackPath = emptyList()
                         layoutEditorOpen = true
                     }
                 }) { Text("Edit layout") }
@@ -354,12 +357,33 @@ private fun OmniHome(
             onDismissRequest = { layoutEditorOpen = false },
             title = { Text("Visual layout editor") },
             text = {
+                val currentComponents = runCatching {
+                    componentsAtPath(editorComponents, editorStackPath)
+                }.getOrDefault(emptyList())
                 Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Text(
-                        "Reorder, add, or remove top-level components. Nested stack editing and drag-and-drop are coming later.",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
+                    ) {
+                        Column {
+                            Text(
+                                if (editorStackPath.isEmpty()) "Root layout"
+                                else "Inside stack · depth ${editorStackPath.size}",
+                                style = MaterialTheme.typography.titleSmall
+                            )
+                            Text(
+                                "Edit components at this level. Open a stack to edit its children.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        if (editorStackPath.isNotEmpty()) {
+                            TextButton(onClick = { editorStackPath = editorStackPath.dropLast(1) }) {
+                                Text("Back")
+                            }
+                        }
+                    }
                     Row {
                         TextButton(onClick = { addComponentMenuOpen = true }) { Text("Add component") }
                         DropdownMenu(
@@ -383,29 +407,42 @@ private fun OmniHome(
                                             "dock" -> dev.omni.launcher.preset.LayoutComponent(type = type, maxVisibleItems = 5)
                                             else -> dev.omni.launcher.preset.LayoutComponent(type = type)
                                         }
-                                        editorComponents = appendComponent(editorComponents, component)
+                                        editorComponents = updateComponentsAtPath(editorComponents, editorStackPath) {
+                                            appendComponent(it, component)
+                                        }
                                         addComponentMenuOpen = false
                                     }
                                 )
                             }
                         }
                     }
-                    if (editorComponents.isEmpty()) {
-                        Text("Your layout is empty. Add a component to get started.")
+                    if (currentComponents.isEmpty()) {
+                        Text("Nothing here yet. Add a component to this level.")
                     } else {
                         LazyColumn(
-                            modifier = Modifier.fillMaxWidth().heightIn(max = 360.dp),
+                            modifier = Modifier.fillMaxWidth().heightIn(max = 390.dp),
                             verticalArrangement = Arrangement.spacedBy(6.dp)
                         ) {
-                            itemsIndexed(editorComponents) { index, component ->
+                            itemsIndexed(currentComponents) { index, component ->
                                 Column(
-                                    modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
-                                    verticalArrangement = Arrangement.spacedBy(2.dp)
+                                    modifier = Modifier.fillMaxWidth().padding(vertical = 5.dp),
+                                    verticalArrangement = Arrangement.spacedBy(3.dp)
                                 ) {
-                                    Text(
-                                        "${index + 1}. ${component.type.replace('_', ' ')}",
-                                        style = MaterialTheme.typography.titleSmall
-                                    )
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
+                                    ) {
+                                        Text(
+                                            "${index + 1}. ${component.type.replace('_', ' ')}",
+                                            style = MaterialTheme.typography.titleSmall
+                                        )
+                                        if (component.type == "stack") {
+                                            TextButton(onClick = {
+                                                editorStackPath = editorStackPath + index
+                                            }) { Text("Open stack") }
+                                        }
+                                    }
                                     if (component.type in setOf("grid", "list", "app_list_container", "dock")) {
                                         Row(
                                             modifier = Modifier.fillMaxWidth(),
@@ -416,8 +453,8 @@ private fun OmniHome(
                                             Switch(
                                                 checked = component.showLabels,
                                                 onCheckedChange = { checked ->
-                                                    editorComponents = editorComponents.toMutableList().also {
-                                                        it[index] = component.copy(showLabels = checked)
+                                                    editorComponents = updateComponentsAtPath(editorComponents, editorStackPath) { items ->
+                                                        items.toMutableList().also { it[index] = component.copy(showLabels = checked) }
                                                     }
                                                 }
                                             )
@@ -426,8 +463,8 @@ private fun OmniHome(
                                         Slider(
                                             value = (component.maxVisibleItems ?: 40).toFloat(),
                                             onValueChange = { value ->
-                                                editorComponents = editorComponents.toMutableList().also {
-                                                    it[index] = component.copy(maxVisibleItems = value.toInt())
+                                                editorComponents = updateComponentsAtPath(editorComponents, editorStackPath) { items ->
+                                                    items.toMutableList().also { it[index] = component.copy(maxVisibleItems = value.toInt()) }
                                                 }
                                             },
                                             valueRange = 8f..80f,
@@ -439,8 +476,8 @@ private fun OmniHome(
                                         Slider(
                                             value = component.columns.toFloat(),
                                             onValueChange = { value ->
-                                                editorComponents = editorComponents.toMutableList().also {
-                                                    it[index] = component.copy(columns = value.toInt())
+                                                editorComponents = updateComponentsAtPath(editorComponents, editorStackPath) { items ->
+                                                    items.toMutableList().also { it[index] = component.copy(columns = value.toInt()) }
                                                 }
                                             },
                                             valueRange = 1f..8f,
@@ -451,8 +488,8 @@ private fun OmniHome(
                                     Slider(
                                         value = component.spacing.toFloat(),
                                         onValueChange = { value ->
-                                            editorComponents = editorComponents.toMutableList().also {
-                                                it[index] = component.copy(spacing = value.toInt())
+                                            editorComponents = updateComponentsAtPath(editorComponents, editorStackPath) { items ->
+                                                items.toMutableList().also { it[index] = component.copy(spacing = value.toInt()) }
                                             }
                                         },
                                         valueRange = 0f..64f,
@@ -462,20 +499,31 @@ private fun OmniHome(
                                         TextButton(
                                             enabled = index > 0,
                                             onClick = {
-                                                editorComponents = moveComponent(editorComponents, index, -1)
+                                                editorComponents = updateComponentsAtPath(editorComponents, editorStackPath) {
+                                                    moveComponent(it, index, -1)
+                                                }
                                             }
                                         ) { Text("Move up") }
                                         TextButton(
-                                            enabled = index < editorComponents.lastIndex,
+                                            enabled = index < currentComponents.lastIndex,
                                             onClick = {
-                                                editorComponents = moveComponent(editorComponents, index, 1)
+                                                editorComponents = updateComponentsAtPath(editorComponents, editorStackPath) {
+                                                    moveComponent(it, index, 1)
+                                                }
                                             }
                                         ) { Text("Move down") }
-                                        TextButton(
-                                            onClick = {
-                                                editorComponents = removeComponent(editorComponents, index)
+                                        TextButton(onClick = {
+                                            editorComponents = updateComponentsAtPath(editorComponents, editorStackPath) {
+                                                removeComponent(it, index)
                                             }
-                                        ) { Text("Remove") }
+                                            if (editorStackPath.isNotEmpty()) {
+                                                val parentPath = editorStackPath.dropLast(1)
+                                                val parentItems = componentsAtPath(editorComponents, parentPath)
+                                                if (editorStackPath.last() !in parentItems.indices) {
+                                                    editorStackPath = parentPath
+                                                }
+                                            }
+                                        }) { Text("Remove") }
                                     }
                                 }
                             }
@@ -597,8 +645,7 @@ private fun OmniHome(
                         enabled = !themePackBusy,
                         onClick = { themePackImportLauncher.launch(arrayOf("application/json", "text/plain")) }
                     ) { Text(if (themePackBusy) "Importing…" else "Import theme pack") }
-                    if (installedThemePacks.isEmpty()) {
-                        Text("No imported themes yet.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    if (installedThemePacks.isEmpty()) {                        Text("No imported themes yet.", color = MaterialTheme.colorScheme.onSurfaceVariant)
                     } else {
                         LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                             itemsIndexed(installedThemePacks, key = { _, item -> item.metadata.id }) { _, pack ->
