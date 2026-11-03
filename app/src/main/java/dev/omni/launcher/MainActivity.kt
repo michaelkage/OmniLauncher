@@ -11,6 +11,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -37,8 +38,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.layout.size
 import androidx.core.content.ContextCompat
 import dev.omni.launcher.access.AccessCapabilities
 import dev.omni.launcher.access.AccessCapabilityProbe
@@ -123,7 +126,7 @@ private fun OmniHome(
     var accessDialogOpen by remember { mutableStateOf(false) }
     var appearanceDialogOpen by remember { mutableStateOf(false) }
     var themeManagerOpen by remember { mutableStateOf(false) }
-    var installedThemePacks by remember { mutableStateOf<List<ThemePackMetadata>>(emptyList()) }
+    var installedThemePacks by remember { mutableStateOf<List<ThemePack>>(emptyList()) }
     var themePackBusy by remember { mutableStateOf(false) }
     var customizeDialogOpen by remember { mutableStateOf(false) }
     var customizeLabels by remember { mutableStateOf(true) }
@@ -183,7 +186,7 @@ private fun OmniHome(
                     }
                 }
                 result.onSuccess { pack ->
-                    installedThemePacks = withContext(Dispatchers.IO) { themePackRepository.list() }
+                    installedThemePacks = withContext(Dispatchers.IO) { themePackRepository.list().map { themePackRepository.load(it.id) } }
                     onCustomThemePackChange(pack)
                     error = "Imported theme: ${pack.metadata.name}."
                 }.onFailure { error = "Theme import failed: ${it.message ?: "invalid theme pack"}" }
@@ -213,7 +216,7 @@ private fun OmniHome(
     LaunchedEffect(Unit) {
         selectPreset(selectedPresetId)
         refreshApps()
-        installedThemePacks = withContext(Dispatchers.IO) { runCatching { themePackRepository.list() }.getOrDefault(emptyList()) }
+        installedThemePacks = withContext(Dispatchers.IO) { runCatching { themePackRepository.list().map { themePackRepository.load(it.id) } }.getOrDefault(emptyList()) }
     }
 
     DisposableEffect(context) {
@@ -400,24 +403,36 @@ private fun OmniHome(
                         Text("No imported themes yet.", color = MaterialTheme.colorScheme.onSurfaceVariant)
                     } else {
                         LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                            itemsIndexed(installedThemePacks, key = { _, item -> item.id }) { _, metadata ->
+                            itemsIndexed(installedThemePacks, key = { _, item -> item.metadata.id }) { _, pack ->
+                                val metadata = pack.metadata
                                 val isActive = customThemePack?.metadata?.id == metadata.id && palette == "custom"
                                 Column(
                                     modifier = Modifier.fillMaxWidth().clickable {
                                         scope.launch {
-                                            val result = runCatching {
-                                                withContext(Dispatchers.IO) { themePackRepository.load(metadata.id) }
-                                            }
-                                            result.onSuccess {
-                                                onCustomThemePackChange(it)
-                                                error = "Applied theme: ${it.metadata.name}."
-                                            }.onFailure { error = "Could not load theme: ${it.message}" }
+                                            onCustomThemePackChange(pack)
+                                            error = "Applied theme: ${pack.metadata.name}."
                                         }
                                     }.padding(vertical = 6.dp),
                                     verticalArrangement = Arrangement.spacedBy(2.dp)
                                 ) {
                                     Text(metadata.name, style = MaterialTheme.typography.titleSmall)
                                     Text("by ${metadata.author} · v${metadata.version}", style = MaterialTheme.typography.bodySmall)
+                                    Text("Light", style = MaterialTheme.typography.labelSmall)
+                                    Row(horizontalArrangement = Arrangement.spacedBy(5.dp)) {
+                                        listOf(pack.palettes.light.primary, pack.palettes.light.secondary, pack.palettes.light.tertiary, pack.palettes.light.background, pack.palettes.light.surface).forEach { value ->
+                                            androidx.compose.foundation.layout.Box(
+                                                Modifier.size(22.dp).background(Color(android.graphics.Color.parseColor(value)))
+                                            )
+                                        }
+                                    }
+                                    Text("Dark", style = MaterialTheme.typography.labelSmall)
+                                    Row(horizontalArrangement = Arrangement.spacedBy(5.dp)) {
+                                        listOf(pack.palettes.dark.primary, pack.palettes.dark.secondary, pack.palettes.dark.tertiary, pack.palettes.dark.background, pack.palettes.dark.surface).forEach { value ->
+                                            androidx.compose.foundation.layout.Box(
+                                                Modifier.size(22.dp).background(Color(android.graphics.Color.parseColor(value)))
+                                            )
+                                        }
+                                    }
                                     Text(if (isActive) "Currently applied · tap to apply" else "Tap to apply", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
                                     TextButton(onClick = {
                                         scope.launch {
