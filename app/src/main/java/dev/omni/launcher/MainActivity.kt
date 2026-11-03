@@ -215,6 +215,7 @@ private fun OmniHome(
                     }
                 }
                 result.onSuccess { imported ->
+                    presetLoadGeneration += 1
                     preset = imported
                     selectedPresetId = "saved:${imported.metadata.id}"
                     preferences.edit().putString("active_preset", selectedPresetId).apply()
@@ -727,6 +728,7 @@ private fun OmniHome(
                                 }
                             }
                             result.onSuccess {
+                                presetLoadGeneration += 1
                                 preset = updated
                                 selectedPresetId = "saved:${updated.metadata.id}"
                                 preferences.edit().putString("active_preset", selectedPresetId).apply()
