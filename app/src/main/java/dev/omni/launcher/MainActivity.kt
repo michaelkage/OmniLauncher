@@ -44,6 +44,11 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInParent
+import androidx.compose.ui.semantics.CustomAccessibilityAction
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.customActions
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
@@ -567,7 +572,34 @@ private fun OmniHome(
                                     Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                                         Text(
                                             "Hold ↕ Drag",
-                                            modifier = Modifier.pointerInput(index) {
+                                            modifier = Modifier
+                                                .semantics {
+                                                    contentDescription = "Reorder component ${index + 1}. Long press and drag to change its position. Move up and Move down actions are also available."
+                                                    stateDescription = when {
+                                                        draggingComponentIndex == index -> "Dragging"
+                                                        draggingComponentIndex != null && dragTargetIndex == index -> "Drop target"
+                                                        else -> "Not being moved"
+                                                    }
+                                                    customActions = buildList {
+                                                        if (index > 0) {
+                                                            add(CustomAccessibilityAction("Move up") {
+                                                                editorComponents = updateComponentsAtPath(editorComponents, editorStackPath) {
+                                                                    moveComponent(it, index, -1)
+                                                                }
+                                                                true
+                                                            })
+                                                        }
+                                                        if (index < currentComponents.lastIndex) {
+                                                            add(CustomAccessibilityAction("Move down") {
+                                                                editorComponents = updateComponentsAtPath(editorComponents, editorStackPath) {
+                                                                    moveComponent(it, index, 1)
+                                                                }
+                                                                true
+                                                            })
+                                                        }
+                                                    }
+                                                }
+                                                .pointerInput(index) {
                                                 var totalDrag = 0f
                                                 val threshold = 42.dp.toPx()
                                                 detectDragGesturesAfterLongPress(
