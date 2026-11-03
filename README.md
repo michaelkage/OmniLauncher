@@ -7,6 +7,7 @@ Omni separates its native runtime from the interface it renders. Versioned JSON 
 ## Principles
 
 - Native Kotlin + Jetpack Compose rendering.
+- Material You dynamic colour on Android 12+, with selectable light/dark, Ocean, Forest, and Plum appearance palettes.
 - Declarative, versioned preset documents.
 - One schema shared by visual and code editors.
 - Presets are data and assets, never arbitrary executable scripts.
@@ -31,6 +32,7 @@ Neither elevated backend is required to launch apps, render presets, switch layo
 - Component registry: clock, grid, list, dock, and stack
 - Reactive app catalogue refreshed on package add/remove/change broadcasts
 - Live bundled-preset switching
+- Persisted appearance preferences with wallpaper-derived Material You colours where supported
 - Persistent active-preset selection and private storage for imported presets
 - Bounded .omni archive import/export through Android's document picker
 - Unit tests for archive round-trips and rejection of malformed or unsafe archive inputs
@@ -53,8 +55,10 @@ Bundled presets are under app/src/main/assets/presets/. Imported presets are sto
 - [x] Reactive clock and package-change app catalogue
 - [x] Optional root capability probe and Shizuku presence detection
 - [x] Persist active preset and import/export bounded declarative .omni archives
+- [x] Material You dynamic colour and selectable appearance palettes
 - [ ] Shizuku binder/user-service integration
 - [ ] Reviewed root/Shizuku operation adapters and capability policy
+- [ ] User-selectable addon catalogue (widget/component packs, icon packs, fonts and appearance packs) with explicit permissions and resource limits
 - [ ] Asset-bearing .omni bundles with safe image resource handling
 - [ ] Visual and code editors sharing the same document model
 - [ ] Community preset catalogue and CI schema validation
