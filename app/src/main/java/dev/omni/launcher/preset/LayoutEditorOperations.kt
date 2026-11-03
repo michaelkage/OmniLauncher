@@ -88,3 +88,21 @@ internal fun calculateDragTargetIndex(
     val offset = (dragDistancePx / rowHeightPx).let { kotlin.math.round(it).toInt() }
     return (startIndex + offset).coerceIn(0, itemCount - 1)
 }
+
+
+/**
+ * Finds the nearest measured row center to the dragged component's current
+ * center. Only visible, valid row indexes are considered.
+ */
+internal fun calculateDragTargetIndexFromCenters(
+    draggedCenterPx: Float,
+    rowCenters: Map<Int, Float>,
+    itemCount: Int
+): Int {
+    if (itemCount <= 0) return -1
+    return rowCenters.entries
+        .asSequence()
+        .filter { it.key in 0 until itemCount }
+        .minByOrNull { kotlin.math.abs(it.value - draggedCenterPx) }
+        ?.key ?: -1
+}
