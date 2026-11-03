@@ -1,6 +1,7 @@
 package dev.omni.launcher.theme
 
 import android.content.Context
+import android.util.AtomicFile
 import java.io.ByteArrayOutputStream
 import java.io.File
 import java.io.InputStream
@@ -11,7 +12,7 @@ import java.io.OutputStream
  * Imported files are never extracted as archives or interpreted as executable content.
  */
 class ThemePackRepository(context: Context) {
-    private val directory = File(context.applicationContext.filesDir, "theme-packs").apply { mkdirs() }
+    private val directory = File(context.applicationContext.filesDir, "theme-packs")
 
     fun import(input: InputStream): ThemePack {
         val bytes = readBounded(input)
@@ -25,12 +26,16 @@ class ThemePackRepository(context: Context) {
         require(bytes.size <= ThemePackCodec.MAX_PACK_BYTES) {
             "Theme pack exceeds the 64 KiB size limit."
         }
-        val target = fileFor(pack.metadata.id)
-        val temporary = File(directory, "${target.name}.tmp")
-        temporary.writeBytes(bytes)
-        if (!temporary.renameTo(target)) {
-            temporary.copyTo(target, overwrite = true)
-            temporary.delete()
+        ensureDirectory()
+        val atomicFile = AtomicFile(fileFor(pack.metadata.id))
+        val stream = atomicFile.startWrite()
+        try {
+            stream.write(bytes)
+            stream.fd.sync()
+            atomicFile.finishWrite(stream)
+        } catch (error: Throwable) {
+            atomicFile.failWrite(stream)
+            throw error
         }
     }
 
@@ -52,13 +57,23 @@ class ThemePackRepository(context: Context) {
         return ThemePackCodec.decode(file.readText(Charsets.UTF_8))
     }
 
-    fun list(): List<ThemePackMetadata> = directory.listFiles()
-        .orEmpty()
-        .filter { it.isFile && it.extension == "json" }
-        .map { ThemePackCodec.decode(it.readText(Charsets.UTF_8)).metadata }
-        .sortedBy { it.name.lowercase() }
+    fun list(): List<ThemePackMetadata> = if (!directory.isDirectory) {
+        emptyList()
+    } else {
+        directory.listFiles()
+            .orEmpty()
+            .filter { it.isFile && it.extension == "json" }
+            .map { ThemePackCodec.decode(it.readText(Charsets.UTF_8)).metadata }
+            .sortedBy { it.name.lowercase() }
+    }
 
     fun remove(id: String): Boolean = fileFor(id).let { it.isFile && it.delete() }
+
+    private fun ensureDirectory() {
+        require(directory.isDirectory || directory.mkdirs()) {
+            "Could not create the theme pack directory."
+        }
+    }
 
     private fun fileFor(id: String): File {
         require(id.matches(Regex("[A-Za-z0-9._-]{1,64}"))) {
