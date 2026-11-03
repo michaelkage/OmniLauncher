@@ -42,6 +42,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInParent
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
@@ -144,6 +146,8 @@ private fun OmniHome(
     var editorStackPath by remember { mutableStateOf<List<Int>>(emptyList()) }
     var draggingComponentIndex by remember { mutableStateOf<Int?>(null) }
     var dragTargetIndex by remember { mutableStateOf<Int?>(null) }
+    var dragStartCenterPx by remember { mutableStateOf<Float?>(null) }
+    var editorRowCenters by remember { mutableStateOf<Map<Int, Float>>(emptyMap()) }
     var addComponentMenuOpen by remember { mutableStateOf(false) }
     var customizeLabels by remember { mutableStateOf(true) }
     var customizeColumns by remember { mutableStateOf(4f) }
@@ -347,6 +351,7 @@ private fun OmniHome(
                             if (current != null) {
                                 editorComponents = current.layout.components
                                 editorStackPath = emptyList()
+                                editorRowCenters = emptyMap()
                                 layoutEditorOpen = true
                             }
                         }
@@ -423,7 +428,10 @@ private fun OmniHome(
                             )
                         }
                         if (editorStackPath.isNotEmpty()) {
-                            TextButton(onClick = { editorStackPath = editorStackPath.dropLast(1) }) {
+                            TextButton(onClick = {
+                                editorStackPath = editorStackPath.dropLast(1)
+                                editorRowCenters = emptyMap()
+                            }) {
                                 Text("Back")
                             }
                         }
@@ -470,6 +478,12 @@ private fun OmniHome(
                             itemsIndexed(currentComponents) { index, component ->
                                 Column(
                                     modifier = Modifier.fillMaxWidth()
+                                        .onGloballyPositioned { coordinates ->
+                                            val center = coordinates.positionInParent().y + coordinates.size.height / 2f
+                                            if (editorRowCenters[index] != center) {
+                                                editorRowCenters = editorRowCenters + (index to center)
+                                            }
+                                        }
                                         .background(
                                             color = when {
                                                 draggingComponentIndex == index -> MaterialTheme.colorScheme.secondaryContainer
@@ -557,6 +571,7 @@ private fun OmniHome(
                                                 detectDragGesturesAfterLongPress(
                                                     onDragStart = {
                                                         totalDrag = 0f
+                                                        dragStartCenterPx = editorRowCenters[index]
                                                         draggingComponentIndex = index
                                                         dragTargetIndex = index
                                                     },
@@ -572,21 +587,33 @@ private fun OmniHome(
                                                         }
                                                         draggingComponentIndex = null
                                                         dragTargetIndex = null
+                                                        dragStartCenterPx = null
                                                     },
                                                     onDragCancel = {
                                                         totalDrag = 0f
                                                         draggingComponentIndex = null
                                                         dragTargetIndex = null
+                                                        dragStartCenterPx = null
                                                     }
                                                 ) { change, dragAmount ->
                                                     change.consume()
                                                     totalDrag += dragAmount.y
-                                                    dragTargetIndex = calculateDragTargetIndex(
-                                                        startIndex = index,
-                                                        dragDistancePx = totalDrag,
-                                                        rowHeightPx = threshold,
-                                                        itemCount = currentComponents.size
-                                                    )
+                                                    val measuredStart = dragStartCenterPx
+                                                    val measuredTarget = measuredStart?.let {
+                                                        calculateDragTargetIndexFromCenters(
+                                                            draggedCenterPx = it + totalDrag,
+                                                            rowCenters = editorRowCenters,
+                                                            itemCount = currentComponents.size
+                                                        )
+                                                    } ?: -1
+                                                    dragTargetIndex = if (measuredTarget >= 0) measuredTarget else {
+                                                        calculateDragTargetIndex(
+                                                            startIndex = index,
+                                                            dragDistancePx = totalDrag,
+                                                            rowHeightPx = threshold,
+                                                            itemCount = currentComponents.size
+                                                        )
+                                                    }
                                                 }
                                             },
                                             style = MaterialTheme.typography.labelMedium,
