@@ -24,6 +24,8 @@ import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Slider
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -94,6 +96,10 @@ private fun OmniHome(
     var presetMenuOpen by remember { mutableStateOf(false) }
     var accessDialogOpen by remember { mutableStateOf(false) }
     var appearanceDialogOpen by remember { mutableStateOf(false) }
+    var customizeDialogOpen by remember { mutableStateOf(false) }
+    var customizeLabels by remember { mutableStateOf(true) }
+    var customizeColumns by remember { mutableStateOf(4f) }
+    var customizeMaxApps by remember { mutableStateOf(40f) }
     var accessStatus by remember { mutableStateOf<AccessCapabilities?>(null) }
     var accessChecking by remember { mutableStateOf(false) }
     var exportDocument by remember { mutableStateOf<PresetDocument?>(null) }
@@ -215,6 +221,16 @@ private fun OmniHome(
                     }
                 ) { Text("Export") }
                 TextButton(onClick = { appearanceDialogOpen = true }) { Text("Style") }
+                TextButton(onClick = {
+                    val current = preset
+                    if (current != null) {
+                        val all = flattenComponents(current.layout.components)
+                        customizeLabels = all.firstOrNull { it.type in setOf("grid", "list", "dock", "app_list_container") }?.showLabels ?: true
+                        customizeColumns = (all.firstOrNull { it.type == "grid" }?.columns ?: 4).toFloat()
+                        customizeMaxApps = (all.firstOrNull { it.type in setOf("grid", "list", "dock", "app_list_container") }?.maxVisibleItems ?: 40).toFloat()
+                        customizeDialogOpen = true
+                    }
+                }) { Text("Customize") }
                 TextButton(onClick = { accessDialogOpen = true }) { Text("Access") }
             }
         }
@@ -239,6 +255,78 @@ private fun OmniHome(
         }
     }
 
+
+
+    if (customizeDialogOpen) {
+        AlertDialog(
+            onDismissRequest = { customizeDialogOpen = false },
+            title = { Text("Customize launcher") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                    Text("App labels", style = MaterialTheme.typography.titleSmall)
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
+                    ) {
+                        Text(if (customizeLabels) "Show app names" else "Hide app names")
+                        Switch(checked = customizeLabels, onCheckedChange = { customizeLabels = it })
+                    }
+                    Text("Grid columns: ${customizeColumns.toInt()}", style = MaterialTheme.typography.titleSmall)
+                    Slider(
+                        value = customizeColumns,
+                        onValueChange = { customizeColumns = it },
+                        valueRange = 3f..8f,
+                        steps = 4
+                    )
+                    Text("Maximum apps per component: ${customizeMaxApps.toInt()}", style = MaterialTheme.typography.titleSmall)
+                    Slider(
+                        value = customizeMaxApps,
+                        onValueChange = { customizeMaxApps = it },
+                        valueRange = 8f..80f,
+                        steps = 17
+                    )
+                    Text(
+                        "These settings update the active preset and are saved on this device. You can still export it as an .omni file.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    val current = preset
+                    if (current != null) {
+                        val updated = current.copy(
+                            layout = current.layout.copy(
+                                components = customizeComponents(
+                                    current.layout.components,
+                                    customizeLabels,
+                                    customizeColumns.toInt(),
+                                    customizeMaxApps.toInt()
+                                )
+                            )
+                        )
+                        scope.launch {
+                            val result = runCatching {
+                                withContext(Dispatchers.IO) { repository.saveImportedPreset(updated) }
+                            }
+                            result.onSuccess {
+                                preset = updated
+                                selectedPresetId = updated.metadata.id
+                                preferences.edit().putString("active_preset", selectedPresetId).apply()
+                                error = "Saved launcher customizations."
+                                customizeDialogOpen = false
+                            }.onFailure { error = "Could not save customizations: ${it.message}" }
+                        }
+                    }
+                }) { Text("Apply") }
+            },
+            dismissButton = {
+                TextButton(onClick = { customizeDialogOpen = false }) { Text("Cancel") }
+            }
+        )
+    }
 
     if (appearanceDialogOpen) {
         AlertDialog(
@@ -328,4 +416,23 @@ private fun OmniHome(
             confirmButton = { TextButton(onClick = { accessDialogOpen = false }) { Text("Close") } }
         )
     }
+}
+
+
+private fun flattenComponents(components: List<dev.omni.launcher.preset.LayoutComponent>): List<dev.omni.launcher.preset.LayoutComponent> =
+    components.flatMap { listOf(it) + flattenComponents(it.children) }
+
+private fun customizeComponents(
+    components: List<dev.omni.launcher.preset.LayoutComponent>,
+    showLabels: Boolean,
+    columns: Int,
+    maxApps: Int
+): List<dev.omni.launcher.preset.LayoutComponent> = components.map { component ->
+    val isAppComponent = component.type in setOf("grid", "list", "dock", "app_list_container")
+    component.copy(
+        showLabels = if (isAppComponent) showLabels else component.showLabels,
+        columns = if (component.type == "grid") columns.coerceIn(3, 8) else component.columns,
+        maxVisibleItems = if (isAppComponent) maxApps.coerceIn(8, 80) else component.maxVisibleItems,
+        children = customizeComponents(component.children, showLabels, columns, maxApps)
+    )
 }
