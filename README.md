@@ -32,6 +32,7 @@ Neither elevated backend is required to launch apps, render presets, switch layo
 - Component registry: clock, grid, list, dock, and stack
 - Reactive app catalogue refreshed on package add/remove/change broadcasts
 - Live bundled-preset switching
+- In-app layout customization for app labels, grid columns, and visible app limits, saved privately and exportable as a preset
 - Persisted appearance preferences with wallpaper-derived Material You colours where supported
 - Persistent active-preset selection and private storage for imported presets
 - Bounded .omni archive import/export through Android's document picker
@@ -56,9 +57,10 @@ Bundled presets are under app/src/main/assets/presets/. Imported presets are sto
 - [x] Optional root capability probe and Shizuku presence detection
 - [x] Persist active preset and import/export bounded declarative .omni archives
 - [x] Material You dynamic colour and selectable appearance palettes
+- [x] In-app layout controls for app labels, grid columns, and visible app limits
 - [ ] Shizuku binder/user-service integration
 - [ ] Reviewed root/Shizuku operation adapters and capability policy
-- [ ] User-selectable addon catalogue (widget/component packs, icon packs, fonts and appearance packs) with explicit permissions and resource limits
+- [ ] Validated add-on catalogue for appearance, icon, font, and component packs with explicit permissions and resource limits
 - [ ] Asset-bearing .omni bundles with safe image resource handling
 - [ ] Visual and code editors sharing the same document model
 - [ ] Community preset catalogue and CI schema validation
