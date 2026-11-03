@@ -152,14 +152,16 @@ private fun OmniHome(
             .onFailure { error = "App catalogue: ${it.message ?: "refresh failed"}" }
     }
 
-    fun selectPreset(id: String) {
+    fun selectPreset(selectionId: String) {
+        val isSavedPreset = selectionId.startsWith("saved:")
+        val presetId = if (isSavedPreset) selectionId.removePrefix("saved:") else selectionId
         runCatching {
-            if (id in repository.savedPresetIds()) repository.loadSavedPreset(id)
-            else repository.loadBundledPreset(id)
+            if (isSavedPreset) repository.loadSavedPreset(presetId)
+            else repository.loadBundledPreset(presetId)
         }.onSuccess {
             preset = it
-            selectedPresetId = id
-            preferences.edit().putString("active_preset", id).apply()
+            selectedPresetId = if (isSavedPreset) "saved:$presetId" else presetId
+            preferences.edit().putString("active_preset", selectedPresetId).apply()
             error = null
         }.onFailure { error = it.message ?: "Preset could not be loaded" }
     }
@@ -176,7 +178,7 @@ private fun OmniHome(
                 }
                 result.onSuccess { imported ->
                     preset = imported
-                    selectedPresetId = imported.metadata.id
+                    selectedPresetId = "saved:${imported.metadata.id}"
                     preferences.edit().putString("active_preset", selectedPresetId).apply()
                     error = null
                 }.onFailure { error = "Import failed: ${it.message ?: "invalid archive"}" }
@@ -241,7 +243,13 @@ private fun OmniHome(
     }
 
     LaunchedEffect(Unit) {
-        selectPreset(selectedPresetId)
+        val savedSelection = selectedPresetId.removePrefix("saved:")
+        val isLegacySavedSelection = !selectedPresetId.startsWith("saved:") &&
+            selectedPresetId in repository.savedPresetIds()
+        selectPreset(
+            if (selectedPresetId.startsWith("saved:") || isLegacySavedSelection) "saved:$savedSelection"
+            else selectedPresetId
+        )
         refreshApps()
         installedThemePacks = withContext(Dispatchers.IO) { runCatching { themePackRepository.list().map { themePackRepository.load(it.id) } }.getOrDefault(emptyList()) }
     }
@@ -286,8 +294,8 @@ private fun OmniHome(
                     }
                     repository.savedPresetIds().forEach { id ->
                         DropdownMenuItem(
-                            text = { Text("Imported: $id") },
-                            onClick = { presetMenuOpen = false; selectPreset(id) }
+                            text = { Text("Saved: $id") },
+                            onClick = { presetMenuOpen = false; selectPreset("saved:$id") }
                         )
                     }
                 }
@@ -548,7 +556,7 @@ private fun OmniHome(
                             }
                             result.onSuccess {
                                 preset = updated
-                                selectedPresetId = updated.metadata.id
+                                selectedPresetId = "saved:${updated.metadata.id}"
                                 preferences.edit().putString("active_preset", selectedPresetId).apply()
                                 error = "Saved visual layout."
                                 layoutEditorOpen = false
