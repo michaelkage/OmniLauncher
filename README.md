@@ -31,15 +31,17 @@ Neither elevated backend is required to launch apps, render presets, switch layo
 - Component registry: clock, grid, list, dock, and stack
 - Reactive app catalogue refreshed on package add/remove/change broadcasts
 - Live bundled-preset switching
+- Persistent active-preset selection and private storage for imported presets
+- Bounded .omni archive import/export through Android's document picker
 - Optional privilege capability layer
 
 ## Getting started
 
-Open in Android Studio with JDK 17 and Android SDK 36. Sync Gradle and run the `app` configuration on a device or emulator. Select **Omni Launcher** as the default Home app in Android settings.
+Open in Android Studio with JDK 17 and Android SDK 36. Sync Gradle and run the app configuration on a device or emulator. Select **Omni Launcher** as the default Home app in Android settings.
 
 ## Presets
 
-Bundled presets are under `app/src/main/assets/presets/`. The schema and validation rules are documented in [docs/PRESET_FORMAT.md](docs/PRESET_FORMAT.md).
+Bundled presets are under app/src/main/assets/presets/. Imported presets are stored in the app's private files directory. Use **Import** to select a .omni archive and **Export** to write the active preset. The archive currently contains exactly one layout.json; scripts and extra archive entries are rejected. See docs/PRESET_FORMAT.md.
 
 ## Roadmap
 
@@ -49,12 +51,13 @@ Bundled presets are under `app/src/main/assets/presets/`. The schema and validat
 - [x] Live switching between bundled presets
 - [x] Reactive clock and package-change app catalogue
 - [x] Optional root capability probe and Shizuku presence detection
+- [x] Persist active preset and import/export bounded declarative .omni archives
 - [ ] Shizuku binder/user-service integration
 - [ ] Reviewed root/Shizuku operation adapters and capability policy
-- [ ] External preset import/export and safe .omni archive handling
+- [ ] Asset-bearing .omni bundles with safe image resource handling
 - [ ] Visual and code editors sharing the same document model
 - [ ] Community preset catalogue and CI schema validation
 
 ## License
 
-Omni Launcher is licensed under the **GNU General Public License v3.0 only**. See [LICENSE](LICENSE).
+Omni Launcher is licensed under the **GNU General Public License v3.0 only**. See LICENSE.
