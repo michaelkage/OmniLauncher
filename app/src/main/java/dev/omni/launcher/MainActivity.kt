@@ -128,6 +128,7 @@ private fun OmniHome(
     var apps by remember { mutableStateOf<List<LaunchableApp>>(emptyList()) }
     var error by remember { mutableStateOf<String?>(null) }
     var presetMenuOpen by remember { mutableStateOf(false) }
+    var moreMenuOpen by remember { mutableStateOf(false) }
     var accessDialogOpen by remember { mutableStateOf(false) }
     var appearanceDialogOpen by remember { mutableStateOf(false) }
     var themeManagerOpen by remember { mutableStateOf(false) }
@@ -302,42 +303,68 @@ private fun OmniHome(
                         )
                     }
                 }
-                TextButton(onClick = { importLauncher.launch(arrayOf("application/zip", "application/octet-stream")) }) {
-                    Text("Import")
+                TextButton(onClick = { moreMenuOpen = true }) { Text("More") }
+                DropdownMenu(expanded = moreMenuOpen, onDismissRequest = { moreMenuOpen = false }) {
+                    DropdownMenuItem(
+                        text = { Text("Import preset") },
+                        onClick = { moreMenuOpen = false; importLauncher.launch(arrayOf("application/zip", "application/octet-stream")) }
+                    )
+                    DropdownMenuItem(
+                        text = { Text("Export preset") },
+                        enabled = preset != null,
+                        onClick = {
+                            moreMenuOpen = false
+                            exportDocument = preset
+                            exportLauncher.launch("${preset?.metadata?.id ?: "omni"}.omni")
+                        }
+                    )
+                    DropdownMenuItem(
+                        text = { Text("Appearance") },
+                        onClick = { moreMenuOpen = false; appearanceDialogOpen = true }
+                    )
+                    DropdownMenuItem(
+                        text = { Text("Theme manager") },
+                        onClick = {
+                            moreMenuOpen = false
+                            scope.launch {
+                                installedThemePacks = withContext(Dispatchers.IO) { runCatching { themePackRepository.list().map { themePackRepository.load(it.id) } }.getOrDefault(emptyList()) }
+                                themeManagerOpen = true
+                            }
+                        }
+                    )
+                    DropdownMenuItem(
+                        text = { Text("Edit layout") },
+                        enabled = preset != null,
+                        onClick = {
+                            moreMenuOpen = false
+                            val current = preset
+                            if (current != null) {
+                                editorComponents = current.layout.components
+                                editorStackPath = emptyList()
+                                layoutEditorOpen = true
+                            }
+                        }
+                    )
+                    DropdownMenuItem(
+                        text = { Text("Customize") },
+                        enabled = preset != null,
+                        onClick = {
+                            moreMenuOpen = false
+                            val current = preset
+                            if (current != null) {
+                                val all = flattenComponents(current.layout.components)
+                                customizeLabels = all.firstOrNull { it.type in setOf("grid", "list", "dock", "app_list_container") }?.showLabels ?: true
+                                customizeColumns = (all.firstOrNull { it.type == "grid" }?.columns ?: 4).toFloat()
+                                customizeMaxApps = (all.firstOrNull { it.type in setOf("grid", "list", "dock", "app_list_container") }?.maxVisibleItems ?: 40).toFloat()
+                                customizeDialogOpen = true
+                            }
+                        }
+                    )
+                    DropdownMenuItem(
+                        text = { Text("Access capabilities") },
+                        onClick = { moreMenuOpen = false; accessDialogOpen = true }
+                    )
                 }
-                TextButton(
-                    enabled = preset != null,
-                    onClick = {
-                        exportDocument = preset
-                        exportLauncher.launch("${preset?.metadata?.id ?: "omni"}.omni")
-                    }
-                ) { Text("Export") }
-                TextButton(onClick = { appearanceDialogOpen = true }) { Text("Style") }
-                TextButton(onClick = {
-                    scope.launch {
-                        installedThemePacks = withContext(Dispatchers.IO) { runCatching { themePackRepository.list().map { themePackRepository.load(it.id) } }.getOrDefault(emptyList()) }
-                        themeManagerOpen = true
-                    }
-                }) { Text("Themes") }
-                TextButton(onClick = {
-                    val current = preset
-                    if (current != null) {
-                        editorComponents = current.layout.components
-                        editorStackPath = emptyList()
-                        layoutEditorOpen = true
-                    }
-                }) { Text("Edit layout") }
-                TextButton(onClick = {
-                    val current = preset
-                    if (current != null) {
-                        val all = flattenComponents(current.layout.components)
-                        customizeLabels = all.firstOrNull { it.type in setOf("grid", "list", "dock", "app_list_container") }?.showLabels ?: true
-                        customizeColumns = (all.firstOrNull { it.type == "grid" }?.columns ?: 4).toFloat()
-                        customizeMaxApps = (all.firstOrNull { it.type in setOf("grid", "list", "dock", "app_list_container") }?.maxVisibleItems ?: 40).toFloat()
-                        customizeDialogOpen = true
-                    }
-                }) { Text("Customize") }
-                TextButton(onClick = { accessDialogOpen = true }) { Text("Access") }
             }
         }
 
