@@ -70,7 +70,7 @@ The current importer/exporter supports a deliberately narrow ZIP format:
 - The expanded layout.json is limited to 1 MiB.
 - Directory entries, duplicate entries, path-bearing names, and all additional files are rejected.
 - The JSON document must pass the same strict schema decoder and validator used for bundled presets.
-- Imported documents are stored in the app's private files directory; the active preset ID is persisted separately.
+- Imported documents are stored in the app's private files directory. Bundled preset selections and saved-copy selections use separate persisted keys, so a saved/imported preset with the same metadata ID does not shadow its bundled counterpart. Saving layout/customization edits updates the saved copy while leaving the bundled asset unchanged.
 - Android's Storage Access Framework is used for import and export, so Omni does not request broad storage access.
 
 Image assets, localized scripts, JavaScript, Kotlin, shell commands, reflection targets, and binder transaction codes are not supported. Future archive extensions must preserve the declarative-only security boundary and add explicit limits and validation for each resource type.
