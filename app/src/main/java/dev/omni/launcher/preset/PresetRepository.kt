@@ -1,6 +1,7 @@
 package dev.omni.launcher.preset
 
 import android.content.Context
+import android.util.AtomicFile
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
@@ -25,7 +26,7 @@ class PresetRepository(context: Context) {
         coerceInputValues = false
         prettyPrint = true
     }
-    private val savedDirectory = File(appContext.filesDir, "presets").apply { mkdirs() }
+    private val savedDirectory = File(appContext.filesDir, "presets")
 
     val bundledPresets = listOf(
         PresetChoice("minimal-wave", "Minimal Wave", "presets/minimal-wave.json"),
@@ -46,11 +47,15 @@ class PresetRepository(context: Context) {
         return decodeAndValidate(file.readText(Charsets.UTF_8))
     }
 
-    fun savedPresetIds(): List<String> = savedDirectory.listFiles()
-        .orEmpty()
-        .filter { it.isFile && it.extension == "json" }
-        .map { it.nameWithoutExtension }
-        .sorted()
+    fun savedPresetIds(): List<String> = if (!savedDirectory.isDirectory) {
+        emptyList()
+    } else {
+        savedDirectory.listFiles()
+            .orEmpty()
+            .filter { it.isFile && it.extension == "json" }
+            .map { it.nameWithoutExtension }
+            .sorted()
+    }
 
     fun importOmni(input: InputStream): PresetDocument =
         PresetArchive.read(input, ::decodeAndValidate).also(::saveImportedPreset)
@@ -64,12 +69,23 @@ class PresetRepository(context: Context) {
     fun saveImportedPreset(document: PresetDocument) {
         val issues = validate(document)
         if (issues.isNotEmpty()) throw PresetValidationException(issues)
+        ensureSavedDirectory()
         val target = savedFile(document.metadata.id)
-        val temporary = File(savedDirectory, "${target.name}.tmp")
-        temporary.writeText(json.encodeToString(document), Charsets.UTF_8)
-        if (!temporary.renameTo(target)) {
-            temporary.copyTo(target, overwrite = true)
-            temporary.delete()
+        val atomicFile = AtomicFile(target)
+        val stream = atomicFile.startWrite()
+        try {
+            stream.write(json.encodeToString(document).toByteArray(Charsets.UTF_8))
+            stream.fd.sync()
+            atomicFile.finishWrite(stream)
+        } catch (error: Throwable) {
+            atomicFile.failWrite(stream)
+            throw error
+        }
+    }
+
+    private fun ensureSavedDirectory() {
+        require(savedDirectory.isDirectory || savedDirectory.mkdirs()) {
+            "Could not create the saved preset directory."
         }
     }
 
@@ -94,7 +110,9 @@ class PresetRepository(context: Context) {
         if (document.schemaVersion != SUPPORTED_SCHEMA_VERSION) {
             issues += PresetValidationIssue("$.schema_version", "Expected schema version $SUPPORTED_SCHEMA_VERSION.")
         }
-        if (document.metadata.id.isBlank()) issues += PresetValidationIssue("$.preset_metadata.id", "ID cannot be blank.")
+        if (!document.metadata.id.matches(Regex("[A-Za-z0-9._-]{1,64}"))) {
+            issues += PresetValidationIssue("$.preset_metadata.id", "ID must be 1–64 characters using letters, numbers, dots, underscores, or hyphens.")
+        }
         if (document.metadata.name.isBlank()) issues += PresetValidationIssue("$.preset_metadata.name", "Name cannot be blank.")
         if (document.layout.type != "vertical_scroll_stack") {
             issues += PresetValidationIssue("$.layout_hierarchy.type", "Unsupported root type '${document.layout.type}'.")
