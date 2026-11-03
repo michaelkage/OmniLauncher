@@ -15,7 +15,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.grid.items as gridItems
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Card
@@ -106,7 +106,7 @@ private fun GridRenderer(component: LayoutComponent, apps: List<LaunchableApp>) 
         verticalArrangement = Arrangement.spacedBy(component.spacing.dp),
         horizontalArrangement = Arrangement.spacedBy(component.spacing.dp)
     ) {
-        items(visible, key = { it.packageName + "/" + it.activityName }) { app ->
+        gridItems(visible, key = { it.packageName + "/" + it.activityName }) { app ->
             AppTile(app, component.showLabels)
         }
     }
@@ -147,7 +147,7 @@ private fun AppRow(app: LaunchableApp, showLabel: Boolean) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable { context.startActivity(Intent().setComponent(app.componentName)) }
+            .clickable { context.startActivity(Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER).setComponent(app.componentName)) }
             .padding(vertical = 4.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
