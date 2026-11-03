@@ -161,6 +161,7 @@ private fun StackRenderer(component: LayoutComponent, apps: List<LaunchableApp>)
 @Composable
 private fun AppRow(app: LaunchableApp, showLabel: Boolean) {
     val context = LocalContext.current
+    val iconBitmap = remember(app.icon) { app.icon.toBitmap(96, 96).asImageBitmap() }
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -169,7 +170,7 @@ private fun AppRow(app: LaunchableApp, showLabel: Boolean) {
         verticalAlignment = Alignment.CenterVertically
     ) {
         androidx.compose.foundation.Image(
-            bitmap = app.icon.toBitmap(96, 96).asImageBitmap(),
+            bitmap = iconBitmap,
             contentDescription = app.label,
             modifier = Modifier.size(40.dp)
         )
@@ -186,6 +187,7 @@ private fun AppRow(app: LaunchableApp, showLabel: Boolean) {
 @Composable
 private fun AppTile(app: LaunchableApp, showLabel: Boolean) {
     val context = LocalContext.current
+    val iconBitmap = remember(app.icon) { app.icon.toBitmap(96, 96).asImageBitmap() }
     Column(
         modifier = Modifier
             .clickable { context.startActivity(Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER).setComponent(app.componentName)) }
@@ -194,7 +196,7 @@ private fun AppTile(app: LaunchableApp, showLabel: Boolean) {
         verticalArrangement = Arrangement.spacedBy(4.dp)
     ) {
         androidx.compose.foundation.Image(
-            bitmap = app.icon.toBitmap(96, 96).asImageBitmap(),
+            bitmap = iconBitmap,
             contentDescription = app.label,
             modifier = Modifier.size(48.dp)
         )
